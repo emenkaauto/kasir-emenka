@@ -3,225 +3,278 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kasir Emenka Auto</title>
+    <title>Kasir Emenka Auto v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @media print {
             body * { visibility: hidden; }
-            #receiptModal, #receiptModal * { visibility: visible; }
-            #receiptModal { position: absolute; left: 0; top: 0; width: 100%; }
+            #receiptArea, #receiptArea * { visibility: visible; }
+            #receiptArea { position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
-    <div class="min-h-screen flex flex-col">
-        <!-- Header / Navigasi Main -->
-        <header class="bg-blue-600 text-white shadow-md">
-            <div class="container mx-auto px-4 py-3 flex justify-between items-center flex-wrap gap-2">
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-cash-register text-2xl"></i>
-                    <h1 class="text-xl font-bold">Kasir Emenka</h1>
-                </div>
-                <!-- Navigation Tabs -->
-                <nav class="flex space-x-2 bg-blue-700 p-1 rounded-lg text-sm">
-                    <button onclick="switchTab('kasir')" id="tab-kasir" class="px-3 py-1.5 rounded-md font-medium bg-white text-blue-700 shadow">
-                        <i class="fas fa-shopping-cart mr-1"></i>Kasir
-                    </button>
-                    <button onclick="switchTab('pengeluaran')" id="tab-pengeluaran" class="px-3 py-1.5 rounded-md font-medium text-white hover:bg-blue-600">
-                        <i class="fas fa-receipt mr-1"></i>Pengeluaran
-                    </button>
-                    <button onclick="switchTab('produk')" id="tab-produk" class="px-3 py-1.5 rounded-md font-medium text-white hover:bg-blue-600">
-                        <i class="fas fa-box mr-1"></i>Stok & Produk
-                    </button>
-                    <button onclick="switchTab('laporan')" id="tab-laporan" class="px-3 py-1.5 rounded-md font-medium text-white hover:bg-blue-600">
-                        <i class="fas fa-chart-line mr-1"></i>Laporan
-                    </button>
-                </nav>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Header / Navigasi -->
+    <header class="bg-blue-600 text-white shadow-md no-print">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center flex-wrap gap-2">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-cash-register text-2xl"></i>
+                <h1 class="text-xl font-bold">Kasir Emenka <span class="text-xs bg-blue-800 px-2 py-0.5 rounded-full">v2</span></h1>
             </div>
-        </header>
+            <nav class="flex space-x-1 sm:space-x-2 bg-blue-700 p-1 rounded-lg text-xs sm:text-sm">
+                <button onclick="switchTab('kasir')" id="tab-kasir" class="px-3 py-1.5 rounded-md font-medium bg-white text-blue-700 shadow">
+                    <i class="fas fa-shopping-cart mr-1"></i>Kasir
+                </button>
+                <button onclick="switchTab('pengeluaran')" id="tab-pengeluaran" class="px-3 py-1.5 rounded-md font-medium text-white hover:bg-blue-600">
+                    <i class="fas fa-receipt mr-1"></i>Pengeluaran
+                </button>
+                <button onclick="switchTab('produk')" id="tab-produk" class="px-3 py-1.5 rounded-md font-medium text-white hover:bg-blue-600">
+                    <i class="fas fa-box mr-1"></i>Stok & Produk
+                </button>
+                <button onclick="switchTab('laporan')" id="tab-laporan" class="px-3 py-1.5 rounded-md font-medium text-white hover:bg-blue-600">
+                    <i class="fas fa-chart-line mr-1"></i>Laporan
+                </button>
+            </nav>
+        </div>
+    </header>
 
-        <!-- Main Content Container -->
-        <main class="flex-1 container mx-auto p-4">
-            <!-- TAB 1: KASIR -->
-            <section id="view-kasir" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Produk List (Kiri) -->
-                <div class="md:col-span-2 bg-white p-4 rounded-lg shadow">
-                    <div class="flex flex-col sm:flex-row gap-2 mb-4">
-                        <input type="text" id="searchProduct" placeholder="Cari nama produk / Scan Barcode..." class="flex-1 border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onkeyup="filterProducts()">
-                        <select id="categoryFilter" onchange="filterProducts()" class="border p-2 rounded-lg bg-gray-50">
-                            <option value="">Semua Kategori</option>
-                        </select>
-                    </div>
-                    <div id="productGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[600px] overflow-y-auto p-1">
-                        <!-- Card Produk di-generate via JavaScript -->
+    <!-- Main Content -->
+    <main class="flex-1 container mx-auto p-3 sm:p-4 no-print">
+        
+        <!-- TAB 1: KASIR -->
+        <section id="view-kasir" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Grid Produk (Kiri) -->
+            <div class="md:col-span-2 bg-white p-4 rounded-lg shadow">
+                <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                    <input type="text" id="searchProduct" placeholder="Cari nama produk / Scan..." class="flex-1 border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onkeyup="renderProducts()">
+                    <select id="categoryFilter" onchange="renderProducts()" class="border p-2 rounded-lg bg-gray-50">
+                        <option value="">Semua Kategori</option>
+                        <option value="Top Up">Top Up / Pulsa</option>
+                        <option value="Minuman">Minuman</option>
+                        <option value="Makanan">Makanan</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+                <div id="productGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[550px] overflow-y-auto p-1">
+                    <!-- Produk di-render otomatis -->
+                </div>
+            </div>
+
+            <!-- Keranjang Belanja (Kanan) -->
+            <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-bold border-b pb-2 mb-3 text-gray-700 flex justify-between items-center">
+                        <span>Keranjang Belanja</span>
+                        <button onclick="clearCart()" class="text-xs text-red-500 hover:underline">Kosongkan</button>
+                    </h2>
+                    <div id="cartItems" class="space-y-2 max-h-[320px] overflow-y-auto divide-y">
+                        <!-- Item keranjang di-render otomatis -->
                     </div>
                 </div>
 
-                <!-- Keranjang / Transaksi (Kanan) -->
-                <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-between">
-                    <div>
-                        <h2 class="text-lg font-bold border-b pb-2 mb-3 text-gray-700">Keranjang Belanja</h2>
-                        <div id="cartItems" class="space-y-2 max-h-[350px] overflow-y-auto divide-y">
-                            <p class="text-gray-400 text-center py-8">Keranjang masih kosong</p>
-                        </div>
+                <div class="border-t pt-3 mt-4 space-y-2">
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span>Total Item:</span>
+                        <span id="cartCount">0</span>
                     </div>
+                    <div class="flex justify-between text-lg font-bold text-gray-800">
+                        <span>Total Tagihan:</span>
+                        <span id="totalText" class="text-blue-600">Rp 0</span>
+                    </div>
+                    <button onclick="openPaymentModal()" id="btnBayar" disabled class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow disabled:opacity-50 disabled:cursor-not-allowed transition">
+                        <i class="fas fa-money-bill-wave mr-2"></i>Bayar Sekarang
+                    </button>
+                </div>
+            </div>
+        </section>
 
-                    <div class="border-t pt-3 mt-4 space-y-2">
-                        <div class="flex justify-between text-sm text-gray-600">
-                            <span>Subtotal:</span>
-                            <span id="subtotalText">Rp 0</span>
+        <!-- TAB 2: PENGELUARAN (FITUR BARU) -->
+        <section id="view-pengeluaran" class="hidden space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Form Pengeluaran -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-bold mb-3 text-gray-700 border-b pb-2">Tambah Pengeluaran / Belanja</h2>
+                    <form id="expenseForm" onsubmit="saveExpense(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600">Tanggal</label>
+                            <input type="date" id="expDate" required class="w-full border p-2 rounded-md">
                         </div>
-                        <div class="flex justify-between text-lg font-bold text-gray-800">
-                            <span>Total:</span>
-                            <span id="totalText" class="text-blue-600">Rp 0</span>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600">Kategori Pengeluaran</label>
+                            <select id="expCategory" required class="w-full border p-2 rounded-md bg-white">
+                                <option value="Belanja Stok">Belanja Stok / Kulakan</option>
+                                <option value="Operasional">Operasional Toko</option>
+                                <option value="Gaji">Gaji / Insentif</option>
+                                <option value="Lain-lain">Lain-lain</option>
+                            </select>
                         </div>
-                        <button onclick="openPaymentModal()" id="btnBayar" disabled class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow disabled:opacity-50 disabled:cursor-not-allowed transition">
-                            <i class="fas fa-money-bill-wave mr-2"></i>BayarSekarang
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600">Keterangan / Detail</label>
+                            <input type="text" id="expDesc" placeholder="Contoh: Beli Kertas Struk, Galon, Modal Pulsa..." required class="w-full border p-2 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600">Nominal Rp</label>
+                            <input type="number" id="expAmount" placeholder="0" min="1" required class="w-full border p-2 rounded-md font-bold text-gray-800">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md">
+                            <i class="fas fa-plus-circle mr-1"></i>Simpan Pengeluaran
                         </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 2: PENGELUARAN / BELANJA (BARU) -->
-            <section id="view-pengeluaran" class="hidden space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Form Input Pengeluaran -->
-                    <div class="bg-white p-4 rounded-lg shadow">
-                        <h2 class="text-lg font-bold mb-3 text-gray-700 border-b pb-2">Catat Pengeluaran Baru</h2>
-                        <form id="expenseForm" onsubmit="saveExpense(event)" class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600">Tanggal</label>
-                                <input type="date" id="expDate" required class="w-full border p-2 rounded-md">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600">Kategori</label>
-                                <select id="expCategory" required class="w-full border p-2 rounded-md bg-white">
-                                    <option value="Belanja Stok">Belanja Stok / Kulakan</option>
-                                    <option value="Operasional">Operasional Toko</option>
-                                    <option value="Gaji">Gaji / Insenitf</option>
-                                    <option value="Lain-lain">Lain-lain</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600">Keterangan / Detail</label>
-                                <input type="text" id="expDesc" placeholder="Contoh: Beli Kertas Struk, Galon..." required class="w-full border p-2 rounded-md">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600">Nominal Rp</label>
-                                <input type="number" id="expAmount" placeholder="0" min="1" required class="w-full border p-2 rounded-md font-bold text-gray-800">
-                            </div>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md">
-                                <i class="fas fa-plus-circle mr-1"></i>Simpan Pengeluaran
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- Tabel Daftar Pengeluaran -->
-                    <div class="md:col-span-2 bg-white p-4 rounded-lg shadow">
-                        <div class="flex justify-between items-center mb-3 border-b pb-2">
-                            <h2 class="text-lg font-bold text-gray-700">Riwayat Pengeluaran</h2>
-                            <span id="totalExpenseBadge" class="text-sm font-semibold bg-red-100 text-red-700 px-3 py-1 rounded-full">Total: Rp 0</span>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-100 border-b">
-                                    <tr>
-                                        <th class="p-2">Tgl</th>
-                                        <th class="p-2">Kategori</th>
-                                        <th class="p-2">Ket.</th>
-                                        <th class="p-2 text-right">Nominal</th>
-                                        <th class="p-2 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="expenseTableBody" class="divide-y">
-                                    <!-- Riwayat Pengeluaran -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 3: PRODUK -->
-            <section id="view-produk" class="hidden bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-bold mb-4 border-b pb-2">Kelola Stok & Produk</h2>
-                <p class="text-sm text-gray-500">Tampilan katalog produk dari Google Sheets / LocalStorage bawaan.</p>
-            </section>
-
-            <!-- TAB 4: LAPORAN -->
-            <section id="view-laporan" class="hidden bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-bold mb-4 border-b pb-2">Laporan Ringkasan</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div class="text-xs text-blue-600 font-semibold uppercase">Total Penjualan</div>
-                        <div id="reportSales" class="text-2xl font-bold text-blue-800">Rp 0</div>
-                    </div>
-                    <div class="bg-red-50 p-4 rounded-lg border border-red-200">
-                        <div class="text-xs text-red-600 font-semibold uppercase">Total Pengeluaran</div>
-                        <div id="reportExpenses" class="text-2xl font-bold text-red-800">Rp 0</div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- MODAL PEMBAYARAN (INPUT NOMINAL MANUAL & TOMBOL PECAHAN) -->
-        <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden p-4 z-50">
-            <div class="bg-white w-full max-w-md rounded-xl shadow-lg p-5">
-                <div class="flex justify-between items-center border-b pb-2 mb-3">
-                    <h3 class="font-bold text-lg text-gray-800">Pembayaran Kasir</h3>
-                    <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+                    </form>
                 </div>
 
-                <div class="space-y-4">
-                    <div class="bg-gray-50 p-3 rounded-lg border text-center">
-                        <div class="text-xs text-gray-500 uppercase">Total Tagihan</div>
-                        <div id="modalTotalPay" class="text-2xl font-black text-blue-600">Rp 0</div>
+                <!-- Tabel Pengeluaran -->
+                <div class="md:col-span-2 bg-white p-4 rounded-lg shadow">
+                    <div class="flex justify-between items-center mb-3 border-b pb-2">
+                        <h2 class="text-lg font-bold text-gray-700">Riwayat Pengeluaran</h2>
+                        <span id="totalExpenseBadge" class="text-sm font-semibold bg-red-100 text-red-700 px-3 py-1 rounded-full">Total: Rp 0</span>
                     </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-100 border-b">
+                                <tr>
+                                    <th class="p-2">Tgl</th>
+                                    <th class="p-2">Kategori</th>
+                                    <th class="p-2">Keterangan</th>
+                                    <th class="p-2 text-right">Nominal</th>
+                                    <th class="p-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenseTableBody" class="divide-y">
+                                <!-- Data Pengeluaran -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-                    <!-- Input Nominal Angka Manual -->
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Jumlah Uang / Input Nominal Manual:</label>
-                        <input type="number" id="manualPayInput" placeholder="Ketik nominal angka di sini..." oninput="calculateChange()" class="w-full text-lg font-bold border-2 border-blue-400 p-2.5 rounded-lg focus:outline-none focus:border-blue-600 text-right">
-                    </div>
+        <!-- TAB 3: PRODUK -->
+        <section id="view-produk" class="hidden bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-bold mb-4 border-b pb-2">Daftar Produk Toko</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-100 border-b">
+                        <tr>
+                            <th class="p-2">Nama Produk</th>
+                            <th class="p-2">Kategori</th>
+                            <th class="p-2 text-right">Harga Jual</th>
+                            <th class="p-2 text-center">Stok</th>
+                            <th class="p-2 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody" class="divide-y">
+                        <!-- Tabel Produk -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-                    <!-- Tombol Pecahan Uang Cepat -->
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Pilihan Cepat Nominal:</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button onclick="setQuickAmount('pas')" class="bg-gray-200 hover:bg-gray-300 py-1.5 rounded font-semibold text-xs">Uang Pas</button>
-                            <button onclick="setQuickAmount(10000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">10.000</button>
-                            <button onclick="setQuickAmount(20000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">20.000</button>
-                            <button onclick="setQuickAmount(50000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">50.000</button>
-                            <button onclick="setQuickAmount(100000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">100.000</button>
-                            <button onclick="setQuickAmount(200000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">200.000</button>
-                        </div>
-                    </div>
+        <!-- TAB 4: LAPORAN -->
+        <section id="view-laporan" class="hidden bg-white p-4 rounded-lg shadow space-y-4">
+            <h2 class="text-lg font-bold border-b pb-2">Laporan Ringkasan</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div class="text-xs text-blue-600 font-semibold uppercase">Total Omset Penjualan</div>
+                    <div id="reportSales" class="text-2xl font-bold text-blue-800">Rp 0</div>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                    <div class="text-xs text-red-600 font-semibold uppercase">Total Pengeluaran</div>
+                    <div id="reportExpenses" class="text-2xl font-bold text-red-800">Rp 0</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div class="text-xs text-green-600 font-semibold uppercase">Estimasi Laba Bersih</div>
+                    <div id="reportNetProfit" class="text-2xl font-bold text-green-800">Rp 0</div>
+                </div>
+            </div>
+        </section>
+    </main>
 
-                    <!-- Display Kembalian -->
-                    <div class="flex justify-between items-center p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-                        <span class="text-sm font-semibold text-gray-700">Kembalian:</span>
-                        <span id="modalChangeText" class="text-lg font-bold text-gray-800">Rp 0</span>
-                    </div>
+    <!-- MODAL PEMBAYARAN (INPUT NOMINAL MANUAL & PECAHAN) -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden p-4 z-50 no-print">
+        <div class="bg-white w-full max-w-md rounded-xl shadow-lg p-5">
+            <div class="flex justify-between items-center border-b pb-2 mb-3">
+                <h3 class="font-bold text-lg text-gray-800">Pembayaran Kasir</h3>
+                <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            </div>
 
-                    <div class="flex space-x-2 pt-2">
-                        <button onclick="closePaymentModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2.5 rounded-lg">Batal</button>
-                        <button onclick="processTransaction()" id="btnProcessPay" disabled class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50">Selesaikan</button>
+            <div class="space-y-4">
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-200 text-center">
+                    <div class="text-xs text-blue-600 uppercase font-semibold">Total Tagihan</div>
+                    <div id="modalTotalPay" class="text-2xl font-black text-blue-700">Rp 0</div>
+                </div>
+
+                <!-- Input Nominal Angka Manual -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Jumlah Bayar (Input Nominal Manual):</label>
+                    <input type="number" id="manualPayInput" placeholder="Ketik nominal angka..." oninput="calculateChange()" class="w-full text-lg font-bold border-2 border-blue-400 p-2.5 rounded-lg focus:outline-none focus:border-blue-600 text-right">
+                </div>
+
+                <!-- Tombol Nominal Pecahan Cepat -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Pilihan Cepat Nominal:</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="setQuickAmount('pas')" class="bg-gray-200 hover:bg-gray-300 py-1.5 rounded font-semibold text-xs">Uang Pas</button>
+                        <button onclick="setQuickAmount(10000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">10.000</button>
+                        <button onclick="setQuickAmount(20000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">20.000</button>
+                        <button onclick="setQuickAmount(50000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">50.000</button>
+                        <button onclick="setQuickAmount(100000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">100.000</button>
+                        <button onclick="setQuickAmount(200000)" class="bg-gray-100 hover:bg-gray-200 py-1.5 rounded font-semibold text-xs">200.000</button>
                     </div>
+                </div>
+
+                <!-- Kembalian Display -->
+                <div class="flex justify-between items-center p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                    <span class="text-sm font-semibold text-gray-700">Kembalian:</span>
+                    <span id="modalChangeText" class="text-lg font-bold text-gray-800">Rp 0</span>
+                </div>
+
+                <div class="flex space-x-2 pt-2">
+                    <button onclick="closePaymentModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2.5 rounded-lg">Batal</button>
+                    <button onclick="processTransaction()" id="btnProcessPay" disabled class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50">Selesaikan</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- STRUK AREA FOR PRINTING -->
+    <div id="receiptArea" class="hidden p-4 bg-white text-black max-w-xs mx-auto font-mono text-sm">
+        <div class="text-center font-bold border-b pb-2 mb-2">
+            <div>KASIR EMENKA</div>
+            <div class="text-xs font-normal">Struk Penjualan</div>
+            <div id="receiptDate" class="text-xs font-normal"></div>
+        </div>
+        <div id="receiptItems" class="space-y-1 border-b pb-2 mb-2"></div>
+        <div class="space-y-1 text-xs">
+            <div class="flex justify-between font-bold"><span>Total:</span><span id="receiptTotal"></span></div>
+            <div class="flex justify-between"><span>Bayar:</span><span id="receiptPay"></span></div>
+            <div class="flex justify-between"><span>Kembali:</span><span id="receiptChange"></span></div>
+        </div>
+        <div class="text-center text-xs border-t pt-2 mt-2">Terima Kasih Atas Kunjungan Anda</div>
+    </div>
+
     <script>
-        // Data State Aplikasi
+        // Data Contoh & LocalStorage State
+        let products = JSON.parse(localStorage.getItem('emenka_products')) || [
+            { id: 1, name: 'Top Up Saldo Ganjil', price: 10000, category: 'Top Up', stock: 999 },
+            { id: 2, name: 'Pulsa All Operator', price: 25000, category: 'Top Up', stock: 999 },
+            { id: 3, name: 'Es Teh Manis', price: 5000, category: 'Minuman', stock: 50 },
+            { id: 4, name: 'Kopi Hitam', price: 4000, category: 'Minuman', stock: 30 }
+        ];
         let cart = [];
         let expenses = JSON.parse(localStorage.getItem('emenka_expenses')) || [];
+        let salesHistory = JSON.parse(localStorage.getItem('emenka_sales')) || [];
         let currentTotal = 0;
 
-        // Init Tanggal
         document.getElementById('expDate').valueAsDate = new Date();
+
+        function init() {
+            renderProducts();
+            renderCart();
+            renderProductTable();
+        }
 
         function switchTab(tabName) {
             ['kasir', 'pengeluaran', 'produk', 'laporan'].forEach(t => {
@@ -232,12 +285,111 @@
             document.getElementById(`tab-${tabName}`).className = "px-3 py-1.5 rounded-md font-medium bg-white text-blue-700 shadow";
             if (tabName === 'pengeluaran') renderExpenses();
             if (tabName === 'laporan') updateReport();
+            if (tabName === 'produk') renderProductTable();
         }
 
-        // --- MANAJEMEN PEMBAYARAN ---
+        // Render Produk Grid
+        function renderProducts() {
+            const grid = document.getElementById('productGrid');
+            const search = document.getElementById('searchProduct').value.toLowerCase();
+            const cat = document.getElementById('categoryFilter').value;
+            grid.innerHTML = '';
+
+            const filtered = products.filter(p => 
+                p.name.toLowerCase().includes(search) && (cat === '' || p.category === cat)
+            );
+
+            if(filtered.length === 0) {
+                grid.innerHTML = `<p class="col-span-full text-center text-gray-400 py-8">Produk tidak ditemukan</p>`;
+                return;
+            }
+
+            filtered.forEach(p => {
+                grid.innerHTML += `
+                    <div onclick="addToCart(${p.id})" class="border rounded-lg p-3 bg-white hover:border-blue-500 hover:shadow-md cursor-pointer transition flex flex-col justify-between">
+                        <div>
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">${p.category}</span>
+                            <h3 class="font-bold text-sm text-gray-800 mt-1 line-clamp-2">${p.name}</h3>
+                        </div>
+                        <div class="mt-2 flex justify-between items-center">
+                            <span class="text-xs font-semibold text-blue-600">Rp ${p.price.toLocaleString('id-ID')}</span>
+                            <span class="text-[10px] text-gray-400">Stok: ${p.stock}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Keranjang Belanja
+        function addToCart(pId) {
+            const p = products.find(item => item.id === pId);
+            if(!p) return;
+            const exist = cart.find(item => item.id === pId);
+            if(exist) {
+                exist.qty += 1;
+            } else {
+                cart.push({ ...p, qty: 1 });
+            }
+            renderCart();
+        }
+
+        function updateCartQty(pId, change) {
+            const item = cart.find(i => i.id === pId);
+            if(item) {
+                item.qty += change;
+                if(item.qty <= 0) cart = cart.filter(i => i.id !== pId);
+            }
+            renderCart();
+        }
+
+        function clearCart() {
+            cart = [];
+            renderCart();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cartItems');
+            container.innerHTML = '';
+            if(cart.length === 0) {
+                container.innerHTML = `<p class="text-gray-400 text-center py-8">Keranjang masih kosong</p>`;
+                document.getElementById('btnBayar').disabled = true;
+                document.getElementById('subtotalText')?.innerText || null;
+                document.getElementById('totalText').innerText = 'Rp 0';
+                document.getElementById('cartCount').innerText = '0';
+                return;
+            }
+
+            let total = 0;
+            let count = 0;
+
+            cart.forEach(item => {
+                const itemTotal = item.price * item.qty;
+                total += itemTotal;
+                count += item.qty;
+                container.innerHTML += `
+                    <div class="flex justify-between items-center pt-2">
+                        <div class="flex-1 pr-2">
+                            <h4 class="text-xs font-bold text-gray-800">${item.name}</h4>
+                            <span class="text-[11px] text-gray-500">Rp ${item.price.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="updateCartQty(${item.id}, -1)" class="w-5 h-5 bg-gray-200 text-xs font-bold rounded hover:bg-gray-300">-</button>
+                            <span class="text-xs font-bold px-1">${item.qty}</span>
+                            <button onclick="updateCartQty(${item.id}, 1)" class="w-5 h-5 bg-gray-200 text-xs font-bold rounded hover:bg-gray-300">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            currentTotal = total;
+            document.getElementById('totalText').innerText = `Rp ${total.toLocaleString('id-ID')}`;
+            document.getElementById('cartCount').innerText = count;
+            document.getElementById('btnBayar').disabled = false;
+        }
+
+        // Pembayaran
         function openPaymentModal() {
-            if (cart.length === 0) return;
-            currentTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            if(cart.length === 0) return;
             document.getElementById('modalTotalPay').innerText = `Rp ${currentTotal.toLocaleString('id-ID')}`;
             document.getElementById('manualPayInput').value = '';
             document.getElementById('modalChangeText').innerText = 'Rp 0';
@@ -276,13 +428,36 @@
         }
 
         function processTransaction() {
-            alert('Transaksi Berhasil Disimpan!');
-            cart = [];
+            const payVal = parseFloat(document.getElementById('manualPayInput').value) || 0;
+            const changeVal = payVal - currentTotal;
+
+            salesHistory.push({
+                id: Date.now(),
+                date: new Date().toLocaleString('id-ID'),
+                total: currentTotal,
+                pay: payVal,
+                change: changeVal,
+                items: [...cart]
+            });
+            localStorage.setItem('emenka_sales', JSON.stringify(salesHistory));
+
+            // Struk Cetak
+            document.getElementById('receiptDate').innerText = new Date().toLocaleString('id-ID');
+            const receiptItemsElem = document.getElementById('receiptItems');
+            receiptItemsElem.innerHTML = '';
+            cart.forEach(i => {
+                receiptItemsElem.innerHTML += `<div class="flex justify-between"><span>${i.name} x${i.qty}</span><span>Rp ${(i.price*i.qty).toLocaleString('id-ID')}</span></div>`;
+            });
+            document.getElementById('receiptTotal').innerText = `Rp ${currentTotal.toLocaleString('id-ID')}`;
+            document.getElementById('receiptPay').innerText = `Rp ${payVal.toLocaleString('id-ID')}`;
+            document.getElementById('receiptChange').innerText = `Rp ${changeVal.toLocaleString('id-ID')}`;
+
             closePaymentModal();
-            renderCart();
+            window.print();
+            clearCart();
         }
 
-        // --- MANAJEMEN PENGELUARAN ---
+        // Pengeluaran
         function saveExpense(e) {
             e.preventDefault();
             const exp = {
@@ -300,7 +475,7 @@
         }
 
         function deleteExpense(id) {
-            if (confirm('Hapus item pengeluaran ini?')) {
+            if(confirm('Hapus item pengeluaran ini?')) {
                 expenses = expenses.filter(x => x.id !== id);
                 localStorage.setItem('emenka_expenses', JSON.stringify(expenses));
                 renderExpenses();
@@ -328,13 +503,36 @@
             document.getElementById('totalExpenseBadge').innerText = `Total: Rp ${total.toLocaleString('id-ID')}`;
         }
 
+        // Laporan
         function updateReport() {
-            const expTotal = expenses.reduce((s, x) => s + x.amount, 0);
-            document.getElementById('reportExpenses').innerText = `Rp ${expTotal.toLocaleString('id-ID')}`;
+            const totalSales = salesHistory.reduce((s, x) => s + x.total, 0);
+            const totalExp = expenses.reduce((s, x) => s + x.amount, 0);
+            const netProfit = totalSales - totalExp;
+
+            document.getElementById('reportSales').innerText = `Rp ${totalSales.toLocaleString('id-ID')}`;
+            document.getElementById('reportExpenses').innerText = `Rp ${totalExp.toLocaleString('id-ID')}`;
+            document.getElementById('reportNetProfit').innerText = `Rp ${netProfit.toLocaleString('id-ID')}`;
         }
 
-        function filterProducts() {}
-        function renderCart() {}
+        // Tabel Produk
+        function renderProductTable() {
+            const tbody = document.getElementById('productTableBody');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-2 font-bold">${p.name}</td>
+                        <td class="p-2">${p.category}</td>
+                        <td class="p-2 text-right">Rp ${p.price.toLocaleString('id-ID')}</td>
+                        <td class="p-2 text-center">${p.stock}</td>
+                        <td class="p-2 text-center"><span class="text-xs text-gray-400">Tersimpan</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Jalankan
+        init();
     </script>
 </body>
 </html>
