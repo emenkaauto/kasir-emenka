@@ -1560,7 +1560,10 @@
             (Array.isArray(state.sales) ? state.sales : []).forEach(s => entries.push({
                 key: 'SALE:' + String(s.id || (s.timestamp || s.date || JSON.stringify(s))),
                 time: bookkeepingTime(s.timestamp, s.date), date: s.date || '', dateKey: bookkeepingDateKey(s.date, s.timestamp),
-                trx: s.id || '', unit: s.unit || '', type: 'Penjualan', description: 'Penjualan kasir',
+                trx: s.id || '', unit: s.unit || '', type: 'Penjualan',
+                description: (Array.isArray(s.items) && s.items.length
+                    ? s.items.map(item => `${item.name || item.productName || item.code || 'Produk'}${Number(item.qty) > 1 ? ' x' + Number(item.qty) : ''}`).join(', ')
+                    : (s.note && s.note !== '-' ? s.note : 'Penjualan kasir')),
                 income: Number(s.grandTotal)||0, expense: 0, method: s.paymentMethod || '', cashier: s.cashier || ''
             }));
             (Array.isArray(window.expenseLogs) ? window.expenseLogs : []).forEach(x => entries.push({
