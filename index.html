@@ -478,6 +478,50 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">Buku Kas / Pembukuan</h3>
+                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 鈥淧embukuan鈥�. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="bg-slate-50 border rounded-lg p-3">
+                            <label for="bookkeeping-date-filter" class="block text-xs font-bold text-slate-600 mb-1">Tanggal Buku Kas</label>
+                            <input id="bookkeeping-date-filter" type="date" onchange="renderBookkeepingTable()" class="w-full border border-slate-300 rounded-lg p-2 text-sm">
+                            <button type="button" onclick="document.getElementById('bookkeeping-date-filter').value='';renderBookkeepingTable()" class="mt-2 text-xs font-bold text-blue-700">Tampilkan Semua Tanggal</button>
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                            <span class="block text-xs font-semibold text-emerald-800">Pemasukan Hari Ini / Tanggal Dipilih</span>
+                            <strong id="bookkeeping-day-income" class="block text-lg text-emerald-700">Rp 0</strong>
+                        </div>
+                        <div class="bg-rose-50 border border-rose-100 rounded-lg p-3">
+                            <span class="block text-xs font-semibold text-rose-800">Pengeluaran Hari Ini / Tanggal Dipilih</span>
+                            <strong id="bookkeeping-day-expense" class="block text-lg text-rose-700">Rp 0</strong>
+                            <span class="block text-xs text-slate-600 mt-1">Selisih bersih: <strong id="bookkeeping-day-net">Rp 0</strong></span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-700 text-sm">Rekap Harian</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs text-slate-700">
+                                <thead class="bg-slate-100 font-bold border-b border-slate-200">
+                                    <tr><th class="p-2.5">Tanggal</th><th class="p-2.5 text-right">Jumlah Transaksi</th><th class="p-2.5 text-right">Pemasukan</th><th class="p-2.5 text-right">Pengeluaran</th><th class="p-2.5 text-right">Selisih Harian</th></tr>
+                                </thead>
+                                <tbody id="bookkeeping-daily-body" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-700 min-w-[1050px]">
+                            <thead class="bg-slate-100 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-2.5">ID Catatan</th><th class="p-2.5">Waktu</th><th class="p-2.5">ID Transaksi</th><th class="p-2.5">Unit Toko</th><th class="p-2.5">Jenis</th><th class="p-2.5">Keterangan</th><th class="p-2.5 text-right">Pemasukan</th><th class="p-2.5 text-right">Pengeluaran</th><th class="p-2.5">Metode / Sumber</th><th class="p-2.5">Kasir</th><th class="p-2.5 text-right">Saldo Berjalan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookkeeping-history-body" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1480,6 +1524,101 @@
                     </tr>
                 `;
             });
+            renderBookkeepingTable();
+        }
+
+        function bookkeepingTime(timestamp, dateValue) {
+            const n = Number(timestamp);
+            if (Number.isFinite(n) && n > 0) return n;
+            const value = String(dateValue || '').trim();
+            let m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3])).getTime();
+            m = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+            if (m) return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]||0), Number(m[5]||0)).getTime();
+            const parsed = Date.parse(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function bookkeepingDateKey(dateValue, timestamp) {
+            const value = String(dateValue || '').trim();
+            let m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+            m = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+            const t = bookkeepingTime(timestamp, value);
+            if (t) {
+                const d = new Date(t);
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            }
+            return 'Tanggal tidak diketahui';
+        }
+
+        function renderBookkeepingTable() {
+            const body = document.getElementById('bookkeeping-history-body');
+            if (!body) return;
+            const entries = [];
+            (Array.isArray(state.sales) ? state.sales : []).forEach(s => entries.push({
+                key: 'SALE:' + String(s.id || (s.timestamp || s.date || JSON.stringify(s))),
+                time: bookkeepingTime(s.timestamp, s.date), date: s.date || '', dateKey: bookkeepingDateKey(s.date, s.timestamp),
+                trx: s.id || '', unit: s.unit || '', type: 'Penjualan', description: 'Penjualan kasir',
+                income: Number(s.grandTotal)||0, expense: 0, method: s.paymentMethod || '', cashier: s.cashier || ''
+            }));
+            (Array.isArray(window.expenseLogs) ? window.expenseLogs : []).forEach(x => entries.push({
+                key: 'EXP:' + String(x.id || (x.date + '|' + x.productId + '|' + x.total)),
+                time: bookkeepingTime(x.timestamp, x.date), date: x.date || '', dateKey: bookkeepingDateKey(x.date, x.timestamp),
+                trx: x.id || '', unit: x.unit || '', type: 'Belanja Stok / Pengeluaran',
+                description: (x.productName || 'Belanja') + (x.note ? ' - ' + x.note : ''),
+                income: 0, expense: Number(x.total)||0, method: x.source || '', cashier: x.cashier || ''
+            }));
+            (Array.isArray(window.paymentLogs) ? window.paymentLogs : []).forEach(y => entries.push({
+                key: 'PAY:' + String(y.id || (y.transactionId + '|' + y.target + '|' + y.total)),
+                time: bookkeepingTime(y.timestamp, y.date), date: y.date || '', dateKey: bookkeepingDateKey(y.date, y.timestamp),
+                trx: y.transactionId || '', unit: y.unit || '', type: 'Referensi Top Up / Pembayaran',
+                description: [y.type, y.provider, y.target, y.status].filter(Boolean).join(' - '),
+                income: 0, expense: 0, method: 'Referensi transaksi kasir (tidak dihitung ulang)', cashier: y.cashier || ''
+            }));
+
+            // Urutkan transaksi secara kronologis; jika waktu sama, gunakan ID agar urutannya stabil.
+            entries.sort((a,b) => a.time-b.time || a.key.localeCompare(b.key));
+            const selectedDate = (document.getElementById('bookkeeping-date-filter') || {}).value || '';
+            const daily = {};
+            entries.forEach(e => {
+                if (!daily[e.dateKey]) daily[e.dateKey] = { count: 0, income: 0, expense: 0 };
+                daily[e.dateKey].count += 1;
+                daily[e.dateKey].income += e.income;
+                daily[e.dateKey].expense += e.expense;
+            });
+
+            const dailyBody = document.getElementById('bookkeeping-daily-body');
+            if (dailyBody) {
+                dailyBody.innerHTML = Object.keys(daily).sort((a,b) => b.localeCompare(a)).map(day => {
+                    const d = daily[day], net = d.income - d.expense;
+                    return `<tr><td class="p-2.5 font-semibold">${escapeHTML(day)}</td><td class="p-2.5 text-right">${d.count}</td><td class="p-2.5 text-right text-emerald-700">${formatRp(d.income)}</td><td class="p-2.5 text-right text-rose-700">${formatRp(d.expense)}</td><td class="p-2.5 text-right font-bold">${formatRp(net)}</td></tr>`;
+                }).join('') || '<tr><td colspan="5" class="p-3 text-center text-slate-400">Belum ada data harian.</td></tr>';
+            }
+
+            const dayEntries = selectedDate ? entries.filter(e => e.dateKey === selectedDate) : entries.filter(e => e.dateKey === bookkeepingDateKey(new Date().toISOString().slice(0,10), 0));
+            const dayIncome = dayEntries.reduce((sum,e) => sum + e.income, 0);
+            const dayExpense = dayEntries.reduce((sum,e) => sum + e.expense, 0);
+            const incomeEl = document.getElementById('bookkeeping-day-income');
+            const expenseEl = document.getElementById('bookkeeping-day-expense');
+            const netEl = document.getElementById('bookkeeping-day-net');
+            if (incomeEl) incomeEl.textContent = formatRp(dayIncome);
+            if (expenseEl) expenseEl.textContent = formatRp(dayExpense);
+            if (netEl) netEl.textContent = formatRp(dayIncome-dayExpense);
+
+            const visibleEntries = selectedDate ? entries.filter(e => e.dateKey === selectedDate) : entries;
+            let balance = 0;
+            // Saldo berjalan tetap dihitung dari semua transaksi hingga baris terkait, bukan hanya transaksi yang difilter.
+            const running = new Map();
+            entries.forEach(e => { balance += e.income - e.expense; running.set(e.key, balance); });
+            body.innerHTML = visibleEntries.map(e => {
+                const dateLabel = e.date || e.dateKey;
+                return `<tr class="hover:bg-slate-50">
+                    <td class="p-2.5 font-mono">${escapeHTML(e.key)}</td><td class="p-2.5 whitespace-nowrap">${escapeHTML(dateLabel)}</td><td class="p-2.5">${escapeHTML(e.trx)}</td><td class="p-2.5">${escapeHTML(e.unit)}</td><td class="p-2.5">${escapeHTML(e.type)}</td><td class="p-2.5">${escapeHTML(e.description)}</td>
+                    <td class="p-2.5 text-right text-emerald-700">${e.income ? formatRp(e.income) : '-'}</td><td class="p-2.5 text-right text-rose-700">${e.expense ? formatRp(e.expense) : '-'}</td><td class="p-2.5">${escapeHTML(e.method)}</td><td class="p-2.5">${escapeHTML(e.cashier)}</td><td class="p-2.5 text-right font-bold">${formatRp(running.get(e.key)||0)}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="11" class="p-4 text-center text-slate-400">Tidak ada transaksi pada tanggal ini.</td></tr>';
         }
 
         function reprintReceipt(trxId) {
