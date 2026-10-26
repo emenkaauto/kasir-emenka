@@ -1203,13 +1203,37 @@
 
         function openCameraScanner() {
             document.getElementById('modal-scanner').classList.remove('hidden');
-            html5QrCodeScanner = new Html5Qrcode("reader");
+            // Aktifkan format barcode produk umum, bukan hanya QR code.
+            const supportedBarcodeFormats = [
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.ITF,
+                Html5QrcodeSupportedFormats.CODABAR,
+                Html5QrcodeSupportedFormats.QR_CODE
+            ];
+            html5QrCodeScanner = new Html5Qrcode("reader", {
+                formatsToSupport: supportedBarcodeFormats,
+                verbose: false
+            });
             html5QrCodeScanner.start(
                 { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 200, height: 200 } },
+                {
+                    fps: 15,
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        // Bidang scan lebar agar barcode garis horizontal mudah terbaca.
+                        const width = Math.min(viewfinderWidth - 24, 340);
+                        const height = Math.min(Math.max(90, Math.floor(width / 2.8)), viewfinderHeight - 24);
+                        return { width: width, height: height };
+                    },
+                    aspectRatio: 2.5
+                },
                 onScanSuccess
             ).catch(err => {
-                alert("Kamera tidak dapat diakses: " + err);
+                alert("Kamera tidak dapat diakses. Pastikan izin kamera diberikan dan halaman dibuka melalui HTTPS. Detail: " + err);
                 closeCameraScanner();
             });
         }
