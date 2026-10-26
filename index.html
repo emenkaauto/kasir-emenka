@@ -482,7 +482,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
                     <div>
                         <h3 class="font-bold text-slate-800 text-base">Buku Kas / Pembukuan</h3>
-                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 闁炽儲闃€embukuan闁炽儻鎷�. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
+                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 闂佺偨鍎查梼鈧琫mbukuan闂佺偨鍎婚幏锟�. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="bg-slate-50 border rounded-lg p-3">
@@ -729,6 +729,15 @@
         let barcodeBuffer = '';
         let barcodeTimer = null;
         let html5QrCodeScanner = null;
+        let cameraScanHandled = false;
+
+        function normalizeBarcode(value) {
+            return String(value == null ? '' : value)
+                .replace(/[\\u200B-\\u200D\\uFEFF]/g, '')
+                .replace(/\\s+/g, '')
+                .trim()
+                .toUpperCase();
+        }
 
         window.onload = function() {
             loadLocalStorageData();
@@ -833,9 +842,12 @@
         }
 
         function handleScannedBarcode(code) {
-            code = String(code || '').trim();
+            code = normalizeBarcode(code);
             if (!code) return;
-            const matches = state.products.filter(p => p.unit === state.activeUnit && String(p.code || '').trim().toLowerCase() === code.toLowerCase());
+            const matches = state.products.filter(p =>
+                p.unit === state.activeUnit &&
+                normalizeBarcode(p.code) === code
+            );
             if (matches.length > 0) {
                 // Barcode dikenal: langsung masukkan ke keranjang.
                 addToCart(matches[0].id);
@@ -1226,6 +1238,14 @@
         function closeReceiptModal() { document.getElementById('modal-receipt').classList.add('hidden'); }
 
         function openCameraScanner() {
+            if (typeof Html5Qrcode === 'undefined') {
+                alert('Modul scanner belum berhasil dimuat. Periksa koneksi internet lalu muat ulang halaman.');
+                return;
+            }
+            if (html5QrCodeScanner) {
+                closeCameraScanner();
+            }
+            cameraScanHandled = false;
             document.getElementById('modal-scanner').classList.remove('hidden');
             // Aktifkan format barcode produk umum, bukan hanya QR code.
             const supportedBarcodeFormats = [
@@ -1263,20 +1283,29 @@
         }
 
         function onScanSuccess(decodedText) {
+            // html5-qrcode dapat memanggil callback beberapa kali untuk barcode yang sama.
+            if (cameraScanHandled) return;
+            const code = normalizeBarcode(decodedText);
+            if (!code) return;
+            cameraScanHandled = true;
+            handleScannedBarcode(code);
             closeCameraScanner();
-            handleScannedBarcode(decodedText);
         }
 
         function closeCameraScanner() {
-            if (html5QrCodeScanner) {
-                html5QrCodeScanner.stop().then(() => {
-                    html5QrCodeScanner.clear();
-                    document.getElementById('modal-scanner').classList.add('hidden');
-                }).catch(() => {
-                    document.getElementById('modal-scanner').classList.add('hidden');
-                });
+            const scanner = html5QrCodeScanner;
+            html5QrCodeScanner = null;
+            const hideModal = () => document.getElementById('modal-scanner').classList.add('hidden');
+            if (scanner) {
+                Promise.resolve()
+                    .then(() => scanner.stop())
+                    .catch(() => {})
+                    .then(() => {
+                        try { scanner.clear(); } catch (e) {}
+                        hideModal();
+                    });
             } else {
-                document.getElementById('modal-scanner').classList.add('hidden');
+                hideModal();
             }
         }
 
@@ -1389,6 +1418,9 @@
             renderInventoryTable();
             renderPosProducts();
             renderOpnameProductDropdown();
+            if (typeof renderExpenseProductOptions === 'function') renderExpenseProductOptions();
+            // Pastikan unit yang baru disimpan tetap aktif agar barcode dapat langsung dikenali.
+            document.getElementById('select-business-unit').value = state.activeUnit;
             triggerRealtimeSync();
         }
 
@@ -1515,6 +1547,7 @@
             if(!confirm(`Catat belanja ${product.name} sebanyak ${qty} unit, total ${formatRp(qty*cost)}? Stok akan bertambah.`)) return;
             const log={id:'EXP-'+Date.now(),date:document.getElementById('expense-date').value,unit:state.activeUnit,productId:product.id,productName:product.name,qty,cost,total:qty*cost,source:document.getElementById('expense-source').value,note:document.getElementById('expense-note').value.trim(),cashier:state.activeCashier};
             product.stock=Number(product.stock||0)+qty; window.expenseLogs.unshift(log); saveToLocalStorage(); renderExpenseHistory(); renderExpenseProductOptions(); renderPosProducts();
+            triggerRealtimeSync();
             document.getElementById('expense-qty').value=1; document.getElementById('expense-cost').value=''; document.getElementById('expense-note').value=''; updateExpenseTotal(); alert('Belanja tersimpan dan stok berhasil ditambah.');
         }
         function renderExpenseHistory(){const body=document.getElementById('expense-history'); if(!body)return; body.innerHTML=(window.expenseLogs||[]).filter(x=>x.unit===state.activeUnit).map(x=>`<tr><td class="p-2">${escapeHTML(x.date)}</td><td class="p-2 font-semibold">${escapeHTML(x.productName)}</td><td class="p-2">${x.qty}</td><td class="p-2 font-bold">${formatRp(x.total)}</td><td class="p-2">${escapeHTML(x.source)}</td><td class="p-2">${escapeHTML(x.note||'-')}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-slate-400">Belum ada pengeluaran.</td></tr>';}
@@ -1532,7 +1565,7 @@
             const total=amount+fee;
             const id='PAYITEM-'+Date.now();
             const paymentData={id:'PAY-'+Date.now(),type,provider,target,amount,fee,total,status:'Dibayar - menunggu proses'};
-            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} 闁愁偓鎷� ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
+            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} 闂佹剚鍋撻幏锟� ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
             renderCart();
             document.getElementById('payment-target').value='';
             document.getElementById('payment-amount').value='';
@@ -1729,12 +1762,14 @@
                 method: 'POST',
                 mode: 'no-cors',
                 keepalive: true,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
                 body: JSON.stringify(payload)
             }).then(() => {
-                if (iconSync) iconSync.className = "fa-solid fa-cloud-arrow-up text-emerald-400";
-                if (labelSync) labelSync.innerText = "Synced";
-                setTimeout(() => { if (labelSync) labelSync.innerText = "Sync Realtime"; }, 2000);
+                // no-cors tidak memberi akses ke respons server; ini hanya berarti permintaan terkirim,
+                // bukan konfirmasi bahwa spreadsheet sudah berubah.
+                if (iconSync) iconSync.className = "fa-solid fa-cloud-arrow-up text-amber-400";
+                if (labelSync) labelSync.innerText = "Terkirim (cek Sheets)";
+                setTimeout(() => { if (labelSync) labelSync.innerText = "Sync Realtime"; }, 3500);
             }).catch(err => {
                 console.error("Sync Error:", err);
                 if (iconSync) iconSync.className = "fa-solid fa-triangle-exclamation text-red-400";
