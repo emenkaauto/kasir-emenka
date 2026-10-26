@@ -482,7 +482,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
                     <div>
                         <h3 class="font-bold text-slate-800 text-base">Buku Kas / Pembukuan</h3>
-                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 鈥淧embukuan鈥�. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
+                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 閳ユ阀embukuan閳ワ拷. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="bg-slate-50 border rounded-lg p-3">
@@ -809,14 +809,18 @@
         }
 
         function handleScannedBarcode(code) {
-            const matches = state.products.filter(p => p.unit === state.activeUnit && p.code.toLowerCase() === code.toLowerCase());
+            code = String(code || '').trim();
+            if (!code) return;
+            const matches = state.products.filter(p => p.unit === state.activeUnit && String(p.code || '').trim().toLowerCase() === code.toLowerCase());
             if (matches.length > 0) {
+                // Barcode dikenal: langsung masukkan ke keranjang.
                 addToCart(matches[0].id);
                 document.getElementById('pos-search-input').value = '';
                 filterPosProducts();
             } else {
-                document.getElementById('pos-search-input').value = code;
-                filterPosProducts();
+                // Barcode belum dikenal: buka formulir produk baru dengan barcode terisi.
+                document.getElementById('pos-search-input').value = '';
+                openProductModal(null, code);
             }
         }
 
@@ -1268,7 +1272,7 @@
             });
         }
 
-        function openProductModal(productId = null) {
+        function openProductModal(productId = null, scannedCode = '') {
             document.getElementById('modal-product').classList.remove('hidden');
             if (productId) {
                 const p = state.products.find(item => item.id === productId);
@@ -1287,6 +1291,11 @@
                 document.getElementById('form-product').reset();
                 document.getElementById('prod-form-id').value = '';
                 document.getElementById('prod-form-unit').value = state.activeUnit;
+                document.getElementById('prod-form-code').value = scannedCode || '';
+                if (scannedCode) {
+                    document.getElementById('modal-product-title').innerText = 'Daftarkan Produk dari Barcode';
+                    document.getElementById('prod-form-name').focus();
+                }
             }
         }
 
@@ -1303,6 +1312,19 @@
             const stock = Number(document.getElementById('prod-form-stock').value);
             const hpp = Number(document.getElementById('prod-form-hpp').value);
             const price = Number(document.getElementById('prod-form-price').value);
+
+            if (!code) {
+                alert('Kode/barcode produk wajib diisi.');
+                return;
+            }
+            const duplicate = state.products.find(p =>
+                String(p.code || '').trim().toLowerCase() === code.toLowerCase() &&
+                p.unit === unit && p.id !== id
+            );
+            if (duplicate) {
+                alert('Barcode ini sudah terdaftar untuk toko ini: ' + duplicate.name);
+                return;
+            }
 
             if (id) {
                 const idx = state.products.findIndex(p => p.id === id);
@@ -1462,7 +1484,7 @@
             const total=amount+fee;
             const id='PAYITEM-'+Date.now();
             const paymentData={id:'PAY-'+Date.now(),type,provider,target,amount,fee,total,status:'Dibayar - menunggu proses'};
-            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} 鈫� ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
+            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} 閳拷 ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
             renderCart();
             document.getElementById('payment-target').value='';
             document.getElementById('payment-amount').value='';
