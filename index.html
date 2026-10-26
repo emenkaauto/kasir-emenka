@@ -482,7 +482,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
                     <div>
                         <h3 class="font-bold text-slate-800 text-base">Buku Kas / Pembukuan</h3>
-                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 閳ユ阀embukuan閳ワ拷. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
+                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 闁炽儲闃€embukuan闁炽儻鎷�. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="bg-slate-50 border rounded-lg p-3">
@@ -790,20 +790,44 @@
         }
 
         function setupHardwareBarcodeScanner() {
+            // Scanner USB/Bluetooth yang bertindak seperti keyboard biasanya mengirim
+            // rangkaian karakter diikuti Enter. Listener global memungkinkan scan
+            // tanpa perlu memilih tab atau kolom terlebih dahulu.
             document.addEventListener('keydown', function(e) {
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
-                    if (e.target.id !== 'pos-search-input') return;
+                const target = e.target;
+                const tag = target && target.tagName ? target.tagName : '';
+                const typingInOtherField = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT')
+                    && target.id !== 'pos-search-input';
+
+                // Jangan mengganggu pengetikan normal di formulir selain kolom kasir.
+                if (typingInOtherField) {
+                    barcodeBuffer = '';
+                    clearTimeout(barcodeTimer);
+                    return;
                 }
 
                 if (e.key === 'Enter') {
-                    if (barcodeBuffer.length > 2) {
-                        handleScannedBarcode(barcodeBuffer.trim());
-                        barcodeBuffer = '';
+                    const input = document.getElementById('pos-search-input');
+                    // Sebagian scanner menulis langsung ke kolom yang sedang fokus;
+                    // sebagian lain hanya mengirim key events ke halaman.
+                    const inputValue = target && target.id === 'pos-search-input' ? target.value.trim() : '';
+                    const scanned = barcodeBuffer.trim() || inputValue;
+                    if (scanned.length > 2) {
+                        e.preventDefault();
+                        handleScannedBarcode(scanned);
+                        if (input) input.value = '';
                     }
-                } else if (e.key.length === 1) {
+                    barcodeBuffer = '';
+                    clearTimeout(barcodeTimer);
+                    return;
+                }
+
+                // Abaikan tombol modifier dan tombol fungsi.
+                if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
                     barcodeBuffer += e.key;
                     clearTimeout(barcodeTimer);
-                    barcodeTimer = setTimeout(() => { barcodeBuffer = ''; }, 100);
+                    // Toleransi scanner yang mengirim karakter agak lambat.
+                    barcodeTimer = setTimeout(() => { barcodeBuffer = ''; }, 300);
                 }
             });
         }
@@ -1508,7 +1532,7 @@
             const total=amount+fee;
             const id='PAYITEM-'+Date.now();
             const paymentData={id:'PAY-'+Date.now(),type,provider,target,amount,fee,total,status:'Dibayar - menunggu proses'};
-            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} 閳拷 ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
+            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} 闁愁偓鎷� ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
             renderCart();
             document.getElementById('payment-target').value='';
             document.getElementById('payment-amount').value='';
