@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>POS Emenka Motor & MNK Jaya Cell v3.2 - Reliability Candidate</title>
+    <title>POS Emenka Motor & MNK Jaya Cell v3.1 - Tablet Ready</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
@@ -596,6 +596,10 @@
                         <button onclick="exportDataJSON()" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center space-x-1">
                             <i class="fa-solid fa-download mr-1"></i> Export Data JSON
                         </button>
+                        <button onclick="document.getElementById('backup-json-file').click()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center space-x-1">
+                            <i class="fa-solid fa-upload mr-1"></i> Impor Backup JSON
+                        </button>
+                        <input id="backup-json-file" type="file" accept="application/json,.json" class="hidden" onchange="importDataJSON(event)">
                         <button onclick="resetSampleData()" class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold text-xs px-3.5 py-2 rounded-lg ml-auto">
                             Reset ke Data Sample
                         </button>
@@ -722,7 +726,7 @@
             sales: [],
             opnameLogs: [],
             paymentMethod: 'TUNAI',
-            sheetsUrl: '',
+            sheetsUrl: 'https://script.google.com/macros/s/AKfycbzhUF4jTY2-QfpwhQ_PD3gRdF_hdINSoH85znDwML1uN4Isq6GoSqNrT9xTw3AkEnpn8A/exec',
             dailySeq: 1
         };
 
@@ -746,9 +750,6 @@
             renderCart();
             renderOpnameProductDropdown();
             setupHardwareBarcodeScanner();
-            if (localStorage.getItem('emenka_pos_v32_sync_pending') && navigator.onLine) {
-                setTimeout(() => triggerRealtimeSync(true), 1200);
-            }
         };
 
         function readStoredArray(key, fallback = []) {
@@ -765,42 +766,31 @@
 
         function loadLocalStorageData() {
             // Data lama tetap dipakai; JSON yang rusak tidak boleh membuat seluruh aplikasi gagal dibuka.
-            state.products = readStoredArray('emenka_pos_v32_products', SAMPLE_PRODUCTS);
-            state.sales = readStoredArray('emenka_pos_v32_sales');
-            state.opnameLogs = readStoredArray('emenka_pos_v32_opname');
-            window.expenseLogs = readStoredArray('emenka_pos_v32_expenses');
-            window.paymentLogs = readStoredArray('emenka_pos_v32_payments');
+            state.products = readStoredArray('emenka_pos_products', SAMPLE_PRODUCTS);
+            state.sales = readStoredArray('emenka_pos_sales');
+            state.opnameLogs = readStoredArray('emenka_pos_opname');
+            window.expenseLogs = readStoredArray('emenka_pos_expenses');
+            window.paymentLogs = readStoredArray('emenka_pos_payments');
             document.getElementById('expense-date').value = new Date().toISOString().slice(0,10);
 
-            const savedSheetsUrl = localStorage.getItem('emenka_pos_v32_sheets_url');
-            state.sheetsUrl = savedSheetsUrl || '';
+            const savedSheetsUrl = localStorage.getItem('emenka_pos_sheets_url');
+            state.sheetsUrl = savedSheetsUrl || 'https://script.google.com/macros/s/AKfycbzhUF4jTY2-QfpwhQ_PD3gRdF_hdINSoH85znDwML1uN4Isq6GoSqNrT9xTw3AkEnpn8A/exec';
             document.getElementById('sheets-script-url').value = state.sheetsUrl;
 
-            const savedSeq = localStorage.getItem('emenka_pos_v32_daily_seq_' + getTodayDateStr());
+            const savedSeq = localStorage.getItem('emenka_pos_daily_seq_' + getTodayDateStr());
             state.dailySeq = savedSeq ? parseInt(savedSeq) : 1;
 
             saveToLocalStorage();
         }
 
         function saveToLocalStorage() {
-            // Jangan biarkan kegagalan storage (mis. kuota penuh) diam-diam mematikan alur kasir.
-            try {
-                localStorage.setItem('emenka_pos_v32_products', JSON.stringify(state.products));
-                localStorage.setItem('emenka_pos_v32_sales', JSON.stringify(state.sales));
-                localStorage.setItem('emenka_pos_v32_opname', JSON.stringify(state.opnameLogs));
-                localStorage.setItem('emenka_pos_v32_expenses', JSON.stringify(window.expenseLogs || []));
-                localStorage.setItem('emenka_pos_v32_payments', JSON.stringify(window.paymentLogs || []));
-                localStorage.setItem('emenka_pos_v32_sheets_url', state.sheetsUrl);
-                localStorage.setItem('emenka_pos_v32_daily_seq_' + getTodayDateStr(), state.dailySeq.toString());
-                return true;
-            } catch (error) {
-                console.error('Gagal menyimpan data lokal. Segera ekspor backup dan periksa ruang penyimpanan browser.', error);
-                const label = document.getElementById('label-sync');
-                if (label) label.innerText = 'Penyimpanan penuh!';
-                const icon = document.getElementById('icon-sync');
-                if (icon) icon.className = 'fa-solid fa-triangle-exclamation text-red-400';
-                return false;
-            }
+            localStorage.setItem('emenka_pos_products', JSON.stringify(state.products));
+            localStorage.setItem('emenka_pos_sales', JSON.stringify(state.sales));
+            localStorage.setItem('emenka_pos_opname', JSON.stringify(state.opnameLogs));
+            localStorage.setItem('emenka_pos_expenses', JSON.stringify(window.expenseLogs || []));
+            localStorage.setItem('emenka_pos_payments', JSON.stringify(window.paymentLogs || []));
+            localStorage.setItem('emenka_pos_sheets_url', state.sheetsUrl);
+            localStorage.setItem('emenka_pos_daily_seq_' + getTodayDateStr(), state.dailySeq.toString());
         }
 
         function getTodayDateStr() {
@@ -1760,151 +1750,123 @@
         function saveSettings() {
             state.sheetsUrl = document.getElementById('sheets-script-url').value.trim();
             saveToLocalStorage();
-            alert('URL webhook disimpan di browser. Ini belum memverifikasi akses atau penulisan ke Google Sheets. Gunakan tombol Sync lalu periksa spreadsheet.');
+            alert('URL Webhook Google Sheets berhasil disimpan!');
         }
 
-        // Snapshot terakhir disimpan sebagai antrean persisten. Karena mode no-cors tidak
-        // mengizinkan browser membaca respons Apps Script, statusnya tidak pernah diklaim
-        // sebagai "berhasil tersimpan"; data dikirim ulang saat diminta/online/reload.
-        let syncTimer = null;
-        let syncInFlight = false;
-        let syncRequestedAgain = false;
+        function triggerRealtimeSync() {
+            if (!state.sheetsUrl) return;
 
-        function buildSyncPayload() {
-            return {
-                schemaVersion: 1,
-                clientUpdatedAt: new Date().toISOString(),
+            const iconSync = document.getElementById('icon-sync');
+            const labelSync = document.getElementById('label-sync');
+
+            if (iconSync) iconSync.className = "fa-solid fa-spinner fa-spin text-amber-400";
+            if (labelSync) labelSync.innerText = "Syncing...";
+
+            const payload = {
                 products: state.products,
                 sales: state.sales,
                 opnameLogs: state.opnameLogs,
                 expenses: window.expenseLogs || [],
                 payments: window.paymentLogs || []
             };
-        }
 
-        function setSyncStatus(kind, message) {
-            const icon = document.getElementById('icon-sync');
-            const label = document.getElementById('label-sync');
-            if (label) label.innerText = message;
-            if (!icon) return;
-            const classes = {
-                waiting: 'fa-solid fa-cloud-arrow-up text-amber-400',
-                sending: 'fa-solid fa-spinner fa-spin text-amber-400',
-                sent: 'fa-solid fa-cloud-arrow-up text-amber-400',
-                offline: 'fa-solid fa-triangle-exclamation text-red-400',
-                saved: 'fa-solid fa-database text-emerald-400'
-            };
-            icon.className = classes[kind] || classes.waiting;
-        }
-
-        function triggerRealtimeSync(immediate = false) {
-            if (!state.sheetsUrl) {
-                setSyncStatus('offline', 'URL Sheets belum diatur');
-                return;
-            }
-
-            const payload = buildSyncPayload();
-            try {
-                // Antrean tidak dihapus otomatis karena fetch no-cors tidak bisa membuktikan
-                // bahwa server selesai menulis ke spreadsheet.
-                localStorage.setItem('emenka_pos_v32_sync_pending', JSON.stringify(payload));
-                localStorage.setItem('emenka_pos_v32_sync_pending_at', payload.clientUpdatedAt);
-            } catch (error) {
-                console.error('Tidak dapat menyimpan antrean sync lokal:', error);
-                setSyncStatus('offline', 'Antrean sync gagal disimpan');
-                return;
-            }
-
-            if (!navigator.onLine) {
-                setSyncStatus('waiting', 'Offline 鈥� antrean tersimpan');
-                return;
-            }
-            if (syncInFlight) {
-                syncRequestedAgain = true;
-                setSyncStatus('waiting', 'Perubahan masuk antrean');
-                return;
-            }
-            if (syncTimer) clearTimeout(syncTimer);
-            setSyncStatus('waiting', 'Menunggu sync鈥�');
-            syncTimer = setTimeout(sendPendingSync, immediate ? 0 : 700);
-        }
-
-        function sendPendingSync() {
-            syncTimer = null;
-            if (syncInFlight || !navigator.onLine) {
-                if (!navigator.onLine) setSyncStatus('waiting', 'Offline 鈥� antrean tersimpan');
-                return;
-            }
-            let payload;
-            try {
-                const raw = localStorage.getItem('emenka_pos_v32_sync_pending');
-                payload = raw ? JSON.parse(raw) : buildSyncPayload();
-            } catch (error) {
-                payload = buildSyncPayload();
-                console.warn('Antrean sync rusak; dibuat ulang dari data lokal.', error);
-            }
-
-            syncInFlight = true;
-            setSyncStatus('sending', 'Mengirim ke Sheets鈥�');
             fetch(state.sheetsUrl, {
                 method: 'POST',
                 mode: 'no-cors',
+                keepalive: true,
                 headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
                 body: JSON.stringify(payload)
             }).then(() => {
-                // Opaque response: ini hanya tanda request selesai dari sisi browser, bukan ACK server.
-                setSyncStatus('sent', 'Terkirim* 鈥� cek Google Sheets');
+                // no-cors tidak memberi akses ke respons server; permintaan terkirim bukan konfirmasi bahwa Sheets berubah.
+                if (iconSync) iconSync.className = "fa-solid fa-cloud-arrow-up text-amber-400";
+                if (labelSync) labelSync.innerText = "Permintaan terkirim*";
+                setTimeout(() => { if (labelSync) labelSync.innerText = "Sync Realtime"; }, 5000);
             }).catch(err => {
-                console.error('Sync Error:', err);
-                setSyncStatus('offline', 'Gagal mengirim 鈥� antrean disimpan');
-            }).finally(() => {
-                syncInFlight = false;
-                if (syncRequestedAgain) {
-                    syncRequestedAgain = false;
-                    triggerRealtimeSync(true);
-                }
+                console.error("Sync Error:", err);
+                if (iconSync) iconSync.className = "fa-solid fa-triangle-exclamation text-red-400";
+                if (labelSync) labelSync.innerText = "Offline";
             });
         }
-
-        window.addEventListener('online', function() {
-            const pending = localStorage.getItem('emenka_pos_v32_sync_pending');
-            if (pending) triggerRealtimeSync(true);
-        });
 
         function syncDataToSheets() {
             if (!state.sheetsUrl) {
                 alert('Masukkan URL Webhook Google Sheets pada menu Pengaturan terlebih dahulu.');
                 return;
             }
-            triggerRealtimeSync(true);
+            triggerRealtimeSync();
         }
 
         function exportDataJSON() {
-            // Backup harus mencakup semua data bisnis, bukan hanya state transaksi utama.
+            // Format ini mendukung backup versi baru dan tetap menyertakan seluruh data bisnis.
             const backup = {
                 app: 'EMENKA POS',
                 backupVersion: 2,
                 exportedAt: new Date().toISOString(),
-                state: state,
+                state: {
+                    products: state.products,
+                    sales: state.sales,
+                    opnameLogs: state.opnameLogs,
+                    dailySeq: state.dailySeq
+                },
                 expenses: window.expenseLogs || [],
-                payments: window.paymentLogs || [],
-                pendingSync: localStorage.getItem('emenka_pos_v32_sync_pending') || null
+                payments: window.paymentLogs || []
             };
             const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
             const url = URL.createObjectURL(blob);
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.href = url;
-            dlAnchorElem.download = `POS_Emenka_Backup_${Date.now()}.json`;
-            document.body.appendChild(dlAnchorElem);
-            dlAnchorElem.click();
-            dlAnchorElem.remove();
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = `POS_Emenka_Backup_${Date.now()}.json`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
+        async function importDataJSON(event) {
+            const input = event && event.target;
+            const file = input && input.files && input.files[0];
+            if (!file) return;
+            try {
+                const parsed = JSON.parse(await file.text());
+                // Terima format backup terbaru {app,state,...} maupun format lama berupa state langsung.
+                const incoming = parsed && parsed.state && Array.isArray(parsed.state.products)
+                    ? parsed.state
+                    : parsed;
+                if (!incoming || !Array.isArray(incoming.products) || !Array.isArray(incoming.sales)) {
+                    throw new Error('Format backup tidak dikenali. Pilih file Export Data JSON dari POS Emenka.');
+                }
+                const ids = new Set();
+                for (const trx of incoming.sales) {
+                    if (!trx || !trx.id || ids.has(String(trx.id))) {
+                        throw new Error('ID transaksi kosong atau duplikat di dalam file backup.');
+                    }
+                    ids.add(String(trx.id));
+                }
+                const summary = `File: ${file.name}\nProduk di backup: ${incoming.products.length}\nTransaksi di backup: ${incoming.sales.length}\n\nImpor akan MENGGANTI produk, penjualan, dan catatan stok opname di browser ini. Pengaturan Google Sheets saat ini dipertahankan.\n\nLanjutkan hanya jika file backup ini benar?`;
+                if (!confirm(summary)) return;
+
+                // Buat backup kondisi halaman utama sebelum mengganti data.
+                exportDataJSON();
+                state.products = incoming.products;
+                state.sales = incoming.sales;
+                state.opnameLogs = Array.isArray(incoming.opnameLogs) ? incoming.opnameLogs : [];
+                state.dailySeq = Number.isFinite(Number(incoming.dailySeq)) ? Number(incoming.dailySeq) : 1;
+                window.expenseLogs = Array.isArray(parsed.expenses) ? parsed.expenses : [];
+                window.paymentLogs = Array.isArray(parsed.payments) ? parsed.payments : [];
+                // Jangan mengimpor URL webhook atau antrean sync dari backup; pertahankan pengaturan aktif.
+                saveToLocalStorage();
+                alert('Backup berhasil dimuat ke penyimpanan halaman utama. Aplikasi akan dimuat ulang. Sinkronisasi Google Sheets tidak dijalankan otomatis; periksa data terlebih dahulu.');
+                location.reload();
+            } catch (error) {
+                alert('Impor gagal: ' + (error && error.message ? error.message : 'File tidak dapat dibaca.'));
+            } finally {
+                if (input) input.value = '';
+            }
+        }
+
         function resetSampleData() {
-            if (confirm('Reset akan menghapus DATA EMENKA di browser ini, termasuk transaksi, stok, pengeluaran, pembayaran, dan antrean sync. Ekspor backup dulu jika data masih diperlukan. Lanjutkan?')) {
-                // Hapus hanya key milik EMENKA, bukan seluruh localStorage situs.
-                Object.keys(localStorage).filter(key => key.startsWith('emenka_pos_v32_')).forEach(key => localStorage.removeItem(key));
+            if (confirm('Atur ulang seluruh data ke sampel awal? Transaksi lokal saat ini akan terhapus.')) {
+                localStorage.clear();
                 location.reload();
             }
         }
