@@ -783,6 +783,7 @@
         }
 
         const EMENKA_AUTH_KEY = 'emenka_pos_auth_v1';
+        const EMENKA_SESSION_KEY = 'emenka_pos_session_v1';
         let emenkaSession = null;
         async function hashPassword(value) {
           const data = new TextEncoder().encode(String(value));
@@ -803,12 +804,15 @@
           const user=document.getElementById('auth-user').value, pw=document.getElementById('auth-password').value;
           let accounts={}; try{accounts=JSON.parse(localStorage.getItem(EMENKA_AUTH_KEY)||'{}')}catch(e){}
           if(!accounts[user] || accounts[user].hash!==await hashPassword(pw)){alert('Nama akun atau password salah.');return;}
-          emenkaSession={user,role:accounts[user].role}; state.activeCashier=user==='admin'?(state.activeCashier||'Admin'):user;
+          emenkaSession={user,role:accounts[user].role};
+          // Ingat sesi pada perangkat/browser ini agar tidak diminta login setiap membuka aplikasi.
+          localStorage.setItem(EMENKA_SESSION_KEY, JSON.stringify(emenkaSession));
+          state.activeCashier=user==='admin'?(state.activeCashier||'Admin'):user;
           document.getElementById('active-user-label').textContent=user==='admin'?'Admin':user;
           document.getElementById('emenka-auth').classList.add('hidden');
           applyRoleAccess(); document.getElementById('auth-password').value='';
         }
-        function logoutEmenka(){ emenkaSession=null; document.getElementById('emenka-auth').classList.remove('hidden'); document.getElementById('auth-password').value=''; }
+        function logoutEmenka(){ emenkaSession=null; localStorage.removeItem(EMENKA_SESSION_KEY); document.getElementById('emenka-auth').classList.remove('hidden'); document.getElementById('auth-password').value=''; }
         function applyRoleAccess(){
           const admin=!!(emenkaSession&&emenkaSession.role==='admin');
           ['products','opname','reports','expenses','advanced','settings'].forEach(t=>{const n=document.getElementById('nav-'+t);if(n)n.classList.toggle('hidden',!admin);});
@@ -845,6 +849,17 @@
         window.onload = async function() {
             loadLocalStorageData();
             await ensureAuthSetup();
+            // Pulihkan sesi login dari browser yang sama. Tombol Keluar menghapus sesi ini.
+            try {
+                const savedSession = JSON.parse(localStorage.getItem(EMENKA_SESSION_KEY) || 'null');
+                const savedAccounts = JSON.parse(localStorage.getItem(EMENKA_AUTH_KEY) || '{}');
+                if (savedSession && savedAccounts[savedSession.user] && savedAccounts[savedSession.user].role === savedSession.role) {
+                    emenkaSession = savedSession;
+                    document.getElementById('active-user-label').textContent = savedSession.user === 'admin' ? 'Admin' : savedSession.user;
+                    document.getElementById('emenka-auth').classList.add('hidden');
+                    applyRoleAccess();
+                } else { localStorage.removeItem(EMENKA_SESSION_KEY); }
+            } catch (e) { localStorage.removeItem(EMENKA_SESSION_KEY); }
             switchBusinessUnit('motor');
             renderPosProducts();
             renderCart();
