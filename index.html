@@ -109,7 +109,7 @@
         }
 
     </style>
-</head>
+<meta name="emenka-build" content="perbaikan-menyeluruh-tahap7"><title>EMENKA POS - Perbaikan Tahap 7</title></head>
 <body class="bg-slate-100 text-slate-800 font-sans antialiased app-height flex flex-col overflow-hidden select-none">
 
     <!-- TOP HEADER / BUSINESS TOGGLE -->
@@ -137,13 +137,10 @@
                     <i class="fa-solid fa-user-circle text-amber-400 text-base sm:text-lg"></i>
                     <div class="text-xs">
                         <span class="block text-slate-400 text-[9px] uppercase font-semibold leading-tight">Kasir</span>
-                        <select id="select-cashier" onchange="updateCashier(this.value)" class="bg-transparent font-semibold text-white focus:outline-none text-xs sm:text-sm cursor-pointer">
-                            <option value="Okti" class="bg-slate-800">Okti</option>
-                            <option value="Fina" class="bg-slate-800">Fina</option>
-                            <option value="Nurul" class="bg-slate-800">Nurul</option>
-                        </select>
+                        <span id="active-user-label" class="font-semibold text-white text-xs sm:text-sm">Belum login</span>
                     </div>
                 </div>
+                <button onclick="logoutEmenka()" class="bg-slate-700 text-white text-xs px-2 py-1.5 rounded-lg">Keluar</button>
 
                 <button onclick="syncDataToSheets()" id="btn-sync-status" class="flex items-center space-x-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 transition" title="Sync Data Ke Google Sheets">
                     <i class="fa-solid fa-cloud-arrow-up text-amber-400" id="icon-sync"></i>
@@ -158,6 +155,7 @@
                 <i class="fa-solid fa-cash-register"></i>
                 <span>Kasir (POS)</span>
             </button>
+            <button id="nav-payments" onclick="switchTab('payments')" class="px-3.5 py-2 font-semibold text-xs sm:text-sm flex items-center space-x-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap"><i class="fa-solid fa-wallet"></i><span>Pembayaran / Top Up</span></button>
             <button id="nav-products" onclick="switchTab('products')" class="px-3.5 py-2 font-semibold text-xs sm:text-sm flex items-center space-x-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
                 <i class="fa-solid fa-boxes-stacked"></i>
                 <span>Katalog & Stok</span>
@@ -171,7 +169,7 @@
                 <span>Pembukuan & Laporan</span>
             </button>
             <button id="nav-expenses" onclick="switchTab('expenses')" class="px-3.5 py-2 font-semibold text-xs sm:text-sm flex items-center space-x-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap"><i class="fa-solid fa-basket-shopping"></i><span>Pengeluaran / Belanja</span></button>
-            <button id="nav-payments" onclick="switchTab('payments')" class="px-3.5 py-2 font-semibold text-xs sm:text-sm flex items-center space-x-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap"><i class="fa-solid fa-wallet"></i><span>Pembayaran / Top Up</span></button>
+            <button id="nav-advanced" onclick="switchTab('advanced')" class="px-3.5 py-2 font-semibold text-xs sm:text-sm flex items-center space-x-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap"><i class="fa-solid fa-toolbox"></i><span>Operasional Lanjutan</span></button>
             <button id="nav-settings" onclick="switchTab('settings')" class="px-3.5 py-2 font-semibold text-xs sm:text-sm flex items-center space-x-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
                 <i class="fa-solid fa-sliders"></i>
                 <span>Pengaturan & Sync</span>
@@ -181,6 +179,22 @@
 
     <!-- MAIN CONTENT AREA -->
     <main class="flex-1 overflow-hidden relative">
+
+
+        <section id="tab-advanced" class="h-full p-4 overflow-y-auto hidden bg-slate-50">
+          <div class="max-w-6xl mx-auto space-y-4">
+            <div><h2 class="text-xl font-bold text-slate-800">Operasional Lanjutan Emenka</h2><p class="text-sm text-slate-500">Fitur tambahan terhubung ke data stok aplikasi. Data lama tidak dihapus.</p></div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div class="bg-white rounded-xl border p-4 space-y-3"><h3 class="font-bold">0. Penerimaan / pembelian oli curah</h3><p class="text-xs text-slate-500">Catat oli masuk per liter (misalnya 1 drum = 200 liter). Pilih produk yang sama dengan produk penjualan oli.</p><select id="adv-oil-in-product" class="w-full border rounded-lg p-2"></select><div class="grid grid-cols-2 gap-2"><input id="adv-oil-in-qty" type="number" min="0.001" step="0.001" placeholder="Jumlah liter masuk" class="border rounded-lg p-2"><input id="adv-oil-in-cost" type="number" min="0" step="1" placeholder="Total harga beli Rp" class="border rounded-lg p-2"></div><select id="adv-oil-in-source" class="w-full border rounded-lg p-2"><option>Tunai</option><option>Transfer Bank</option><option>Bank Digital</option><option>QRIS</option><option>Utang pemasok</option></select><input id="adv-oil-in-note" placeholder="Catatan pemasok / nomor nota" class="w-full border rounded-lg p-2"><button onclick="advReceiveOil()" class="bg-blue-700 text-white rounded-lg px-4 py-2">Catat oli masuk</button><div id="adv-oil-in-result" class="text-sm"></div></div>
+              <div class="bg-white rounded-xl border p-4 space-y-3"><h3 class="font-bold">1. Penjualan minyak curah</h3><label class="block text-sm">Produk minyak curah (stok akan dikurangi)</label><select id="adv-oil-product" class="w-full border rounded-lg p-2"></select><div class="grid grid-cols-2 gap-2"><div><label class="text-sm">Jumlah (liter)</label><input id="adv-oil-qty" type="number" min="0.001" step="0.001" value="0.5" class="w-full border rounded-lg p-2"></div><div><label class="text-sm">Harga jual total (Rp)</label><input id="adv-oil-price" type="number" min="0" step="100" value="7000" class="w-full border rounded-lg p-2"></div></div><p class="text-xs text-slate-500">Harga dimasukkan manual per transaksi; stok berkurang sesuai liter.</p><button onclick="advSellOil()" class="bg-amber-500 text-slate-900 font-bold rounded-lg px-4 py-2">Catat penjualan minyak</button><div id="adv-oil-result" class="text-sm"></div></div>
+              <div class="bg-white rounded-xl border p-4 space-y-3"><h3 class="font-bold">2. Modal pemilik & kas</h3><div class="grid grid-cols-2 gap-2"><select id="adv-cash-type" class="border rounded-lg p-2"><option value="modal">Modal pemilik</option><option value="titipan">Uang sementara pemilik</option><option value="tambahan">Tambahan uang kas</option><option value="float_koin">Saldo kas kecil / uang koin (pencatatan saja)</option><option value="keluar">Pengambilan/pengeluaran kas</option></select><input id="adv-cash-amount" type="number" min="1" placeholder="Nominal Rp" class="border rounded-lg p-2"></div><input id="adv-cash-note" placeholder="Catatan (opsional)" class="w-full border rounded-lg p-2"><button onclick="advRecordCash()" class="bg-emerald-600 text-white rounded-lg px-4 py-2">Simpan catatan kas</button><div class="grid grid-cols-2 gap-2"><input id="adv-open-cash" type="number" min="0" placeholder="Kas awal hari Rp" class="border rounded-lg p-2"><input id="adv-actual-cash" type="number" min="0" placeholder="Kas fisik saat tutup Rp" class="border rounded-lg p-2"></div><button onclick="advCloseCash()" class="bg-slate-800 text-white rounded-lg px-4 py-2">Rekonsiliasi tutup kas</button><div id="adv-cash-result" class="text-sm"></div></div>
+              <div class="bg-white rounded-xl border p-4 space-y-3"><h3 class="font-bold">3. Barang konsinyasi / titipan</h3><div class="grid grid-cols-2 gap-2"><input id="adv-cons-name" placeholder="Nama barang" class="border rounded-lg p-2"><input id="adv-cons-owner" placeholder="Nama penitip" class="border rounded-lg p-2"><input id="adv-cons-qty" type="number" min="1" step="1" placeholder="Jumlah terjual" class="border rounded-lg p-2"><input id="adv-cons-price" type="number" min="1" step="1" placeholder="Harga jual per barang Rp" class="border rounded-lg p-2"><input id="adv-cons-due" type="number" min="0" step="1" placeholder="Hak penitip total Rp / bayar Rp" class="border rounded-lg p-2"></div><button onclick="advConsignment(false)" class="bg-indigo-600 text-white rounded-lg px-4 py-2">Catat penjualan titipan</button><button onclick="advConsignment(true)" class="bg-emerald-600 text-white rounded-lg px-4 py-2">Catat pembayaran penitip</button><div id="adv-cons-result" class="text-sm"></div></div>
+              <div class="bg-white rounded-xl border p-4 space-y-3"><h3 class="font-bold">4. Barang rusak / voucher kedaluwarsa / penyesuaian stok</h3><select id="adv-stock-product" class="w-full border rounded-lg p-2"></select><div class="grid grid-cols-2 gap-2"><select id="adv-stock-reason" class="border rounded-lg p-2"><option>Barang rusak</option><option>Voucher kedaluwarsa</option><option>Penggantian sales</option><option>Stok hilang</option><option>Koreksi stok</option><option>Barang kembali</option></select><input id="adv-stock-qty" type="number" min="0.001" step="0.001" placeholder="Jumlah" class="border rounded-lg p-2"></div><input id="adv-stock-note" placeholder="Catatan / klaim pemasok" class="w-full border rounded-lg p-2"><button onclick="advAdjustStock()" class="bg-rose-600 text-white rounded-lg px-4 py-2">Catat penyesuaian</button><div id="adv-stock-result" class="text-sm"></div><div class="border-t pt-3"><h4 class="font-semibold text-sm">Daftar klaim barang rusak / voucher</h4><div id="adv-claims-list" class="text-sm space-y-2 text-slate-600">Belum ada klaim.</div></div></div>
+              <div class="bg-white rounded-xl border p-4 space-y-3"><h3 class="font-bold">5. Biaya operasional terpisah</h3><div class="grid grid-cols-2 gap-2"><input id="adv-exp-name" placeholder="Contoh: listrik / bensin" class="border rounded-lg p-2"><input id="adv-exp-amount" type="number" min="1" placeholder="Nominal Rp" class="border rounded-lg p-2"></div><select id="adv-exp-source" class="w-full border rounded-lg p-2"><option>Tunai</option><option>Transfer Bank</option><option>Bank Digital</option><option>QRIS</option></select><button onclick="advRecordExpense()" class="bg-amber-600 text-white rounded-lg px-4 py-2">Catat biaya operasional</button><p class="text-xs text-slate-500">Dicatat terpisah dari belanja stok agar tidak menambah persediaan.</p><div id="adv-exp-result" class="text-sm"></div></div>
+              <div class="bg-white rounded-xl border p-4 space-y-3"><h3 class="font-bold">6. Riwayat fitur lanjutan & cadangan JSON</h3><div class="flex flex-wrap gap-2"><button onclick="advRenderLogs()" class="border rounded-lg px-3 py-2">Muat riwayat</button><button onclick="advExportBackup()" class="bg-blue-700 text-white rounded-lg px-3 py-2">Unduh cadangan JSON</button><label class="border rounded-lg px-3 py-2 cursor-pointer">Pulihkan JSON<input type="file" accept="application/json,.json" onchange="advImportBackup(event)" class="hidden"></label></div><div id="adv-summary" class="text-sm"></div><div id="adv-logs" class="max-h-64 overflow-auto text-xs space-y-2"></div><p class="text-xs text-amber-700">Cadangan disarankan setiap hari. Pemulihan mengganti data aplikasi dengan isi file cadangan; buat cadangan terlebih dahulu.</p></div>
+            </div>
+          </div>
+        </section>
 
         <!-- TAB 1: KASIR (POS) -->
         <section id="tab-pos" class="h-full flex flex-col md:flex-row overflow-hidden">
@@ -302,6 +316,12 @@
                     </button>
                 </div>
 
+                <div id="rep-financial-snapshot" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Arus kas bersih tercatat</div><div id="rep-net-cash" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Penerimaan penjualan dikurangi biaya operasional dan arus keluar buku kas lanjutan.</div></div>
+                    <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Nilai persediaan saat ini</div><div id="rep-stock-value" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Stok unit aktif 脳 HPP produk saat ini.</div></div>
+                    <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Jumlah unit persediaan</div><div id="rep-stock-qty" class="text-lg font-extrabold mt-1">0</div><div class="text-[11px] text-slate-500">Total kuantitas stok produk unit aktif.</div></div>
+                </div>
+
                 <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-3 items-center">
                     <input type="text" id="inv-search-input" onkeyup="renderInventoryTable()" placeholder="Cari nama, kode, barcode, rak..." class="flex-1 min-w-[200px] px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
                     <select id="inv-unit-filter" onchange="renderInventoryTable()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold">
@@ -419,6 +439,7 @@
         <!-- TAB 4: PEMBUKUAN & LAPORAN -->
         <section id="tab-reports" class="h-full p-4 overflow-y-auto hidden">
             <div class="max-w-6xl mx-auto space-y-4 pb-12">
+                <div id="adv-report-summary" class="bg-white border rounded-xl p-4 text-sm space-y-2"><b>Rekap operasional lanjutan</b><p class="text-slate-500">Memuat rekap stok rusak dan voucher kedaluwarsa dari catatan lanjutan.</p></div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                         <span class="text-xs text-slate-500 font-semibold block">Total Omset (Penjualan)</span>
@@ -429,7 +450,7 @@
                         <span id="rep-total-hpp" class="text-xl font-extrabold text-slate-700 block mt-1">Rp 0</span>
                     </div>
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                        <span class="text-xs text-slate-500 font-semibold block">Estimasi Laba Bersih</span>
+                        <span class="text-xs text-slate-500 font-semibold block">Estimasi Laba Setelah Kerugian Stok</span>
                         <span id="rep-total-profit" class="text-xl font-extrabold text-amber-600 block mt-1">Rp 0</span>
                     </div>
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -482,7 +503,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
                     <div>
                         <h3 class="font-bold text-slate-800 text-base">Buku Kas / Pembukuan</h3>
-                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets 闂佺偨鍎查梼鈧琫mbukuan闂佺偨鍎婚幏锟�. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
+                        <p class="text-xs text-slate-500 mt-1">Format disamakan dengan sheet Google Sheets. Penjualan menambah pemasukan, belanja mengurangi saldo, pembayaran hanya referensi agar tidak dihitung dua kali.</p>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="bg-slate-50 border rounded-lg p-3">
@@ -610,6 +631,17 @@
 
     </main>
 
+    <div id="emenka-auth" class="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-sm space-y-3">
+        <h2 class="text-xl font-bold text-slate-800">Login EMENKA POS</h2>
+        <p id="auth-info" class="text-sm text-slate-600">Masuk menggunakan akun Anda.</p>
+        <select id="auth-user" class="w-full border rounded-lg p-3"><option value="admin">Admin</option><option value="Okti">Okti</option><option value="Fina">Fina</option><option value="Nurul">Nurul</option></select>
+        <input id="auth-password" type="password" autocomplete="current-password" placeholder="Password" class="w-full border rounded-lg p-3">
+        <button onclick="loginEmenka()" class="w-full bg-amber-500 font-bold rounded-lg p-3">Masuk</button>
+        <p class="text-[11px] text-slate-500">Password disimpan sebagai hash di browser ini. Untuk keamanan penuh, pembatasan akses juga perlu diterapkan di server.</p>
+      </div>
+    </div>
+
     <!-- MODALS -->
     <!-- Modal Product Form -->
     <div id="modal-product" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-3 hidden">
@@ -643,18 +675,25 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Lokasi Rak / Etalase</label>
-                        <input type="text" id="prod-form-rak" required placeholder="Rak A-1, Etalase Depan..." class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
+                        <select id="prod-form-rak" required class="w-full p-2 border border-slate-300 rounded-lg font-semibold"></select>
+                        <div class="flex gap-2 mt-1"><button type="button" onclick="manageProductLocation('add')" class="text-blue-700 text-[10px] font-bold">+ Tambah Lokasi</button><button type="button" onclick="manageProductLocation('edit')" class="text-amber-700 text-[10px] font-bold">Edit Lokasi</button></div>
                     </div>
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Kategori</label>
-                        <input type="text" id="prod-form-category" required placeholder="Oli, Kampas, Token, Paket Data..." class="w-full p-2 border border-slate-300 rounded-lg">
+                        <select id="prod-form-category" required class="w-full p-2 border border-slate-300 rounded-lg"></select>
+                        <div class="flex gap-2 mt-1"><button type="button" onclick="manageProductCategory('add')" class="text-blue-700 text-[10px] font-bold">+ Tambah Kategori</button><button type="button" onclick="manageProductCategory('delete')" class="text-red-700 text-[10px] font-bold">Hapus Kategori</button></div>
                     </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Jenis Penjualan</label>
+                    <select id="prod-form-bulk-oil" class="w-full p-2 border border-slate-300 rounded-lg"><option value="normal">Produk biasa / oli kemasan</option><option value="bulk">Oli curah / literan</option></select>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Stok</label>
-                        <input type="number" id="prod-form-stock" required min="0" value="10" class="w-full p-2 border border-slate-300 rounded-lg font-bold">
+                        <input type="number" id="prod-form-stock" required min="0" step="0.001" value="10" class="w-full p-2 border border-slate-300 rounded-lg font-bold">
                     </div>
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">HPP / Modal</label>
@@ -743,8 +782,69 @@
                 .toUpperCase();
         }
 
-        window.onload = function() {
+        const EMENKA_AUTH_KEY = 'emenka_pos_auth_v1';
+        let emenkaSession = null;
+        async function hashPassword(value) {
+          const data = new TextEncoder().encode(String(value));
+          const digest = await crypto.subtle.digest('SHA-256', data);
+          return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+        }
+        async function ensureAuthSetup() {
+          if (localStorage.getItem(EMENKA_AUTH_KEY)) return;
+          alert('Pengaturan akun pertama kali. Buat password Admin dan password masing-masing kasir.');
+          const accounts = {};
+          for (const name of ['admin','Okti','Fina','Nurul']) {
+            let pw=''; while (pw.length < 6) { pw=prompt('Buat password minimal 6 karakter untuk '+(name==='admin'?'ADMIN':name)); if(pw===null) return; if(pw.length<6) alert('Password minimal 6 karakter.'); }
+            accounts[name]={hash:await hashPassword(pw),role:name==='admin'?'admin':'cashier'};
+          }
+          localStorage.setItem(EMENKA_AUTH_KEY,JSON.stringify(accounts));
+        }
+        async function loginEmenka() {
+          const user=document.getElementById('auth-user').value, pw=document.getElementById('auth-password').value;
+          let accounts={}; try{accounts=JSON.parse(localStorage.getItem(EMENKA_AUTH_KEY)||'{}')}catch(e){}
+          if(!accounts[user] || accounts[user].hash!==await hashPassword(pw)){alert('Nama akun atau password salah.');return;}
+          emenkaSession={user,role:accounts[user].role}; state.activeCashier=user==='admin'?(state.activeCashier||'Admin'):user;
+          document.getElementById('active-user-label').textContent=user==='admin'?'Admin':user;
+          document.getElementById('emenka-auth').classList.add('hidden');
+          applyRoleAccess(); document.getElementById('auth-password').value='';
+        }
+        function logoutEmenka(){ emenkaSession=null; document.getElementById('emenka-auth').classList.remove('hidden'); document.getElementById('auth-password').value=''; }
+        function applyRoleAccess(){
+          const admin=!!(emenkaSession&&emenkaSession.role==='admin');
+          ['products','opname','reports','expenses','advanced','settings'].forEach(t=>{const n=document.getElementById('nav-'+t);if(n)n.classList.toggle('hidden',!admin);});
+          if(!admin && !['pos','payments'].includes(window.currentEmenkaTab||'pos')) switchTab('pos');
+        }
+        function getProductCategories(){
+          const saved=JSON.parse(localStorage.getItem('emenka_pos_categories_v1')||'null');
+          const fromProducts=(state.products||[]).map(p=>String(p.category||'').trim()).filter(Boolean);
+          return [...new Set([...(Array.isArray(saved)?saved:[]),...fromProducts])].sort((a,b)=>a.localeCompare(b,'id'));
+        }
+        function populateProductCategoryOptions(selected=''){
+          const el=document.getElementById('prod-form-category'); if(!el)return;
+          const cats=getProductCategories();
+          if(selected && !cats.includes(selected))cats.push(selected);
+          el.innerHTML=cats.map(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;return o.outerHTML;}).join('');
+          if(selected)el.value=selected; else if(cats.length)el.value=cats[0];
+        }
+        function manageProductCategory(action){
+          const el=document.getElementById('prod-form-category'); let cats=getProductCategories();
+          if(action==='add'){
+            const name=prompt('Nama kategori baru:'); if(!name||!name.trim())return;
+            const value=name.trim(); if(cats.some(x=>x.toLowerCase()===value.toLowerCase()))return alert('Kategori sudah ada.');
+            cats.push(value); localStorage.setItem('emenka_pos_categories_v1',JSON.stringify(cats)); populateProductCategoryOptions(value);
+          }else if(action==='delete'){
+            const selected=el.value; if(!selected)return alert('Pilih kategori yang akan dihapus.');
+            const used=(state.products||[]).filter(p=>String(p.category||'').trim()===selected);
+            if(used.length)return alert('Kategori 鈥�'+selected+'鈥� masih digunakan oleh '+used.length+' produk. Ubah kategori produk tersebut terlebih dahulu sebelum menghapus kategori ini.');
+            if(!confirm('Hapus kategori 鈥�'+selected+'鈥�?'))return;
+            cats=cats.filter(x=>x!==selected); localStorage.setItem('emenka_pos_categories_v1',JSON.stringify(cats));
+            populateProductCategoryOptions(cats[0]||''); populateCategoryFilter();
+          }
+        }
+
+        window.onload = async function() {
             loadLocalStorageData();
+            await ensureAuthSetup();
             switchBusinessUnit('motor');
             renderPosProducts();
             renderCart();
@@ -774,7 +874,7 @@
             document.getElementById('expense-date').value = new Date().toISOString().slice(0,10);
 
             const savedSheetsUrl = localStorage.getItem('emenka_pos_sheets_url');
-            state.sheetsUrl = savedSheetsUrl || 'https://script.google.com/macros/s/AKfycbzhUF4jTY2-QfpwhQ_PD3gRdF_hdINSoH85znDwML1uN4Isq6GoSqNrT9xTw3AkEnpn8A/exec';
+            state.sheetsUrl = savedSheetsUrl || 'https://script.google.com/macros/s/AKfycbwBvn-3rtZPYnyT9WRC8n6ltz0NHz30XtsJ-GfEeMJUspokN5cWLjoJXlgvmwzJ0LGitA/exec';
             document.getElementById('sheets-script-url').value = state.sheetsUrl;
 
             const savedSeq = localStorage.getItem('emenka_pos_daily_seq_' + getTodayDateStr());
@@ -892,11 +992,14 @@
         }
 
         function updateCashier(cashierName) {
-            state.activeCashier = cashierName;
+            if (emenkaSession && emenkaSession.role === 'cashier') state.activeCashier = emenkaSession.user;
+            else state.activeCashier = cashierName;
         }
 
         function switchTab(tabName) {
-            const tabs = ['pos', 'products', 'opname', 'reports', 'expenses', 'payments', 'settings'];
+            if (emenkaSession && emenkaSession.role !== 'admin' && !['pos','payments'].includes(tabName)) { alert('Menu ini hanya dapat diakses Admin.'); return; }
+            window.currentEmenkaTab = tabName;
+            const tabs = ['pos', 'products', 'opname', 'reports', 'expenses', 'payments', 'advanced', 'settings'];
             tabs.forEach(t => {
                 const el = document.getElementById(`tab-${t}`);
                 const nav = document.getElementById(`nav-${t}`);
@@ -916,6 +1019,7 @@
             if (tabName === 'reports') renderReports();
             if (tabName === 'expenses') { renderExpenseProductOptions(); renderExpenseHistory(); updateExpenseTotal(); }
             if (tabName === 'payments') { renderPaymentHistory(); updatePaymentTotal(); }
+            if (tabName === 'advanced') advInit();
         }
 
         function formatRp(amount) {
@@ -966,9 +1070,7 @@
                             </div>
                             <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between">
                                 <span class="font-bold text-amber-600 text-xs sm:text-sm">${formatRp(p.price)}</span>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${p.stock < 5 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}">
-                                    Stok: ${p.stock}
-                                </span>
+
                             </div>
                         </div>
                     `;
@@ -980,43 +1082,68 @@
         function clearPosSearch() { document.getElementById('pos-search-input').value = ''; renderPosProducts(); }
 
         function addToCart(productId) {
-            const product = state.products.find(p => p.id === productId);
+            const product = state.products.find(p => String(p.id) === String(productId));
             if (!product) return;
-
-            const existingIndex = state.cart.findIndex(item => item.id === productId);
+            // Produk oli kemasan tetap dijual per kemasan. Untuk oli curah/literan,
+            // kasir meminta konfirmasi agar qty pecahan dan harga transaksi dapat dipakai.
+            // Jenis oli curah ditentukan dari pengaturan produk, bukan ditanyakan setiap klik.
+            // Kompatibilitas data lama: nama/kategori yang jelas menyebut 'oli curah' dianggap curah.
+            let qty = 1, salePrice = Number(product.price || 0), unitLabel = product.saleUnit || product.unitLabel || '';
+            const isBulkOil = product.isBulkOilProduct === true || /oli\s*curah|minyak\s*curah/i.test(String(product.category || '') + ' ' + String(product.name || ''));
+            if (isBulkOil) {
+                const q = prompt('Jumlah oli dalam liter (boleh desimal, contoh 0,8):', '1');
+                if (q === null) return;
+                qty = Number(String(q).trim().replace(',', '.'));
+                if (!Number.isFinite(qty) || qty <= 0) return alert('Jumlah liter tidak valid.');
+                const mode = confirm('OK = masukkan HARGA TOTAL transaksi.\nBatal = masukkan HARGA PER LITER.');
+                const entered = prompt(mode ? 'Harga TOTAL untuk jumlah tersebut (Rp):' : 'Harga per LITER (Rp):', String(mode ? Math.round(salePrice * qty) : salePrice));
+                if (entered === null) return;
+                const val = Number(String(entered).replace(/[^0-9,.-]/g, '').replace(',', '.'));
+                if (!Number.isFinite(val) || val < 0) return alert('Harga tidak valid.');
+                salePrice = mode ? val / qty : val;
+                unitLabel = 'L';
+            }
+            const existingIndex = state.cart.findIndex(item => String(item.id) === String(productId) && !!item.isBulkOil === isBulkOil && Number(item.price) === Number(salePrice));
+            const currentQty = existingIndex > -1 ? Number(state.cart[existingIndex].qty || 0) : 0;
+            if (currentQty + qty > Number(product.stock || 0)) {
+                alert(`Stok tidak mencukupi. Stok tersedia: ${product.stock}${isBulkOil ? ' liter' : ''}`);
+                return;
+            }
             if (existingIndex > -1) {
-                if (state.cart[existingIndex].qty + 1 > product.stock) {
-                    alert('Stok barang tidak mencukupi!');
-                    return;
-                }
-                state.cart[existingIndex].qty += 1;
+                state.cart[existingIndex].qty = Number((currentQty + qty).toFixed(3));
             } else {
                 state.cart.push({
-                    id: product.id,
-                    code: product.code,
-                    name: product.name,
-                    price: product.price,
-                    hpp: product.hpp,
-                    qty: 1
+                    id: product.id, code: product.code, name: product.name,
+                    price: salePrice, hpp: Number(product.hpp || 0), qty,
+                    isBulkOil, unitLabel: unitLabel || (isBulkOil ? 'L' : '')
                 });
             }
             renderCart();
         }
 
         function updateCartQty(productId, delta) {
-            const item = state.cart.find(i => i.id === productId);
-            const product = state.products.find(p => p.id === productId);
+            const item = state.cart.find(i => String(i.id) === String(productId));
+            const product = state.products.find(p => String(p.id) === String(productId));
             if (!item || !product) return;
-
-            const newQty = item.qty + delta;
-            if (newQty <= 0) {
-                removeFromCart(productId);
-            } else if (newQty > product.stock) {
-                alert('Stok barang tidak mencukupi!');
-            } else {
-                item.qty = newQty;
-                renderCart();
+            if (item.isBulkOil) {
+                const q = prompt('Ubah jumlah liter (boleh desimal):', String(item.qty).replace('.', ','));
+                if (q === null) return;
+                const nextQty = Number(String(q).trim().replace(',', '.'));
+                if (!Number.isFinite(nextQty) || nextQty <= 0) return alert('Jumlah liter tidak valid.');
+                const otherQty = state.cart.filter(i => String(i.id) === String(productId) && i !== item).reduce((n, i) => n + Number(i.qty || 0), 0);
+                if (nextQty + otherQty > Number(product.stock || 0)) return alert('Stok oli tidak mencukupi.');
+                item.qty = Number(nextQty.toFixed(3));
+                const totalMode = confirm('Ubah harga TOTAL transaksi? OK = masukkan harga total; Batal = pertahankan harga per liter.');
+                if (totalMode) {
+                    const total = prompt('Harga total untuk jumlah ini (Rp):', String(Math.round(item.price * item.qty)));
+                    if (total !== null) { const n = Number(String(total).replace(/[^0-9,.-]/g, '').replace(',', '.')); if (Number.isFinite(n) && n >= 0) item.price = n / item.qty; }
+                }
+                renderCart(); return;
             }
+            const newQty = Number(item.qty) + delta;
+            if (newQty <= 0) removeFromCart(productId);
+            else if (newQty > Number(product.stock || 0)) alert('Stok barang tidak mencukupi!');
+            else { item.qty = newQty; renderCart(); }
         }
 
         function removeFromCart(productId) {
@@ -1052,10 +1179,10 @@
                                 </button>
                             </div>
                             <div class="flex justify-between items-center mt-1 text-xs">
-                                <span class="text-slate-500">${formatRp(item.price)}</span>
+                                <span class="text-slate-500">${formatRp(item.price)}${item.isBulkOil ? ' / liter' : ''}</span>
                                 <div class="flex items-center space-x-1.5 bg-slate-100 px-1 py-0.5 rounded">
                                     <button onclick="updateCartQty('${item.id}', -1)" class="w-4 h-4 rounded bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">-</button>
-                                    <span class="font-bold px-1 text-slate-800 text-xs">${item.qty}</span>
+                                    <span class="font-bold px-1 text-slate-800 text-xs">${item.qty}${item.isBulkOil ? ' L' : ''}</span>
                                     <button onclick="updateCartQty('${item.id}', 1)" class="w-4 h-4 rounded bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">+</button>
                                 </div>
                                 <span class="font-bold text-slate-800">${formatRp(totalItem)}</span>
@@ -1068,7 +1195,31 @@
         }
 
         function calculateCartTotal() {
-            const subtotal = state.cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            // Validasi sebelum transaksi dibuat atau stok dikurangi.
+            for (const item of state.cart) {
+                if (!Number.isFinite(Number(item.qty)) || Number(item.qty) <= 0) {
+                    alert(`Jumlah barang tidak valid: ${item.name || 'Barang'}`); return;
+                }
+                if (!Number.isFinite(Number(item.price)) || Number(item.price) <= 0) {
+                    alert(`Harga jual barang harus lebih dari 0. Hapus atau perbaiki item: ${item.name || 'Barang'}`); return;
+                }
+            }
+            // Gabungkan kebutuhan stok per produk agar beberapa baris harga berbeda
+            // tidak lolos validasi stok secara terpisah.
+            const requiredByProduct = new Map();
+            state.cart.filter(item => !item.isPayment).forEach(item => {
+                const key = String(item.id);
+                requiredByProduct.set(key, (requiredByProduct.get(key) || 0) + Number(item.qty));
+            });
+            for (const [productId, requiredQty] of requiredByProduct.entries()) {
+                const product = state.products.find(p => String(p.id) === productId);
+                if (!product) { alert('Produk dalam keranjang tidak ditemukan. Muat ulang keranjang dan coba lagi.'); return; }
+                if (requiredQty - Number(product.stock || 0) > 0.0000001) {
+                    alert(`Stok ${product.name} tidak mencukupi. Dibutuhkan ${Number(requiredQty.toFixed(3))}, tersedia ${product.stock}.`); return;
+                }
+            }
+
+            const subtotal = state.cart.reduce((sum, i) => sum + (Number(i.price) * Number(i.qty)), 0);
             const discount = Number(document.getElementById('cart-discount-input').value || 0);
             const grandTotal = Math.max(0, subtotal - discount);
 
@@ -1172,11 +1323,23 @@
                 }
             });
 
-            state.cart.forEach(cartItem => {
-                const prod = state.products.find(p => p.id === cartItem.id);
-                if (prod) {
-                    prod.stock = Math.max(0, prod.stock - cartItem.qty);
+            // Hitung ulang kebutuhan stok di dalam checkout (scope lokal), termasuk beberapa baris harga.
+            const requiredByProduct = new Map();
+            state.cart.filter(item => !item.isPayment).forEach(item => {
+                const key = String(item.id);
+                requiredByProduct.set(key, (requiredByProduct.get(key) || 0) + Number(item.qty || 0));
+            });
+            for (const [productId, requiredQty] of requiredByProduct.entries()) {
+                const product = state.products.find(p => String(p.id) === productId);
+                if (!product || requiredQty - Number(product.stock || 0) > 0.0000001) {
+                    alert(`Stok ${product ? product.name : 'produk'} tidak mencukupi atau produk tidak ditemukan. Transaksi dibatalkan.`);
+                    return;
                 }
+            }
+            // Kurangi stok tepat satu kali per produk berdasarkan total seluruh baris.
+            requiredByProduct.forEach((requiredQty, productId) => {
+                const prod = state.products.find(p => String(p.id) === productId);
+                if (prod) prod.stock = Math.max(0, Number((Number(prod.stock || 0) - requiredQty).toFixed(3)));
             });
 
             state.sales.unshift(transaction);
@@ -1361,7 +1524,40 @@
             });
         }
 
+        function getProductLocations() {
+            const saved = JSON.parse(localStorage.getItem('emenka_pos_locations_v1') || 'null');
+            const defaults = ['Etalase', 'Rak', 'Gudang', 'Lemari'];
+            const existing = (state.products || []).map(p => String(p.rak || '').trim()).filter(Boolean);
+            return [...new Set([...(Array.isArray(saved) ? saved : defaults), ...existing])];
+        }
+        function populateProductLocationOptions(selected = '') {
+            const el = document.getElementById('prod-form-rak'); if (!el) return;
+            const locations = getProductLocations();
+            if (selected && !locations.includes(selected)) locations.push(selected);
+            el.innerHTML = locations.map(x => `<option value="${String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}">${String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('');
+            if (selected) el.value = selected;
+        }
+        function manageProductLocation(action) {
+            const el = document.getElementById('prod-form-rak');
+            let locations = getProductLocations();
+            if (action === 'add') {
+                const name = prompt('Nama lokasi baru:'); if (!name || !name.trim()) return;
+                const value = name.trim(); if (locations.some(x => x.toLowerCase() === value.toLowerCase())) return alert('Lokasi sudah ada.');
+                locations.push(value); localStorage.setItem('emenka_pos_locations_v1', JSON.stringify(locations)); populateProductLocationOptions(value);
+            } else {
+                const old = el.value; if (!old) return alert('Pilih lokasi yang akan diedit.');
+                const value = prompt('Ubah nama lokasi:', old); if (!value || !value.trim()) return;
+                const next = value.trim(); if (locations.some(x => x.toLowerCase() === next.toLowerCase() && x !== old)) return alert('Nama lokasi sudah digunakan.');
+                locations = locations.map(x => x === old ? next : x); localStorage.setItem('emenka_pos_locations_v1', JSON.stringify(locations));
+                // Perbarui lokasi pada produk yang memakai nama lama.
+                (state.products || []).forEach(p => { if (String(p.rak || '').trim() === old) p.rak = next; });
+                saveToLocalStorage(); populateProductLocationOptions(next); renderInventoryTable(); triggerRealtimeSync();
+            }
+        }
+
         function openProductModal(productId = null, scannedCode = '') {
+            populateProductCategoryOptions();
+            populateProductLocationOptions();
             document.getElementById('modal-product').classList.remove('hidden');
             if (productId) {
                 const p = state.products.find(item => item.id === productId);
@@ -1370,8 +1566,9 @@
                 document.getElementById('prod-form-unit').value = p.unit;
                 document.getElementById('prod-form-code').value = p.code;
                 document.getElementById('prod-form-name').value = p.name;
-                document.getElementById('prod-form-rak').value = p.rak || '';
-                document.getElementById('prod-form-category').value = p.category;
+                populateProductLocationOptions(p.rak || '');
+                document.getElementById('prod-form-bulk-oil').value = p.isBulkOilProduct ? 'bulk' : 'normal';
+                populateProductCategoryOptions(p.category);
                 document.getElementById('prod-form-stock').value = p.stock;
                 document.getElementById('prod-form-hpp').value = p.hpp;
                 document.getElementById('prod-form-price').value = p.price;
@@ -1380,6 +1577,8 @@
                 document.getElementById('form-product').reset();
                 document.getElementById('prod-form-id').value = '';
                 document.getElementById('prod-form-unit').value = state.activeUnit;
+                populateProductLocationOptions('Etalase');
+                document.getElementById('prod-form-bulk-oil').value = 'normal';
                 document.getElementById('prod-form-code').value = scannedCode || '';
                 if (scannedCode) {
                     document.getElementById('modal-product-title').innerText = 'Daftarkan Produk dari Barcode';
@@ -1392,13 +1591,17 @@
 
         function saveProductForm(e) {
             e.preventDefault();
+            if (!emenkaSession || emenkaSession.role !== 'admin') { alert('Hanya Admin yang boleh mengubah katalog.'); return; }
             const id = document.getElementById('prod-form-id').value;
             const unit = document.getElementById('prod-form-unit').value;
             const code = document.getElementById('prod-form-code').value.trim();
             const name = document.getElementById('prod-form-name').value.trim();
             const rak = document.getElementById('prod-form-rak').value.trim();
+            const isBulkOilProduct = document.getElementById('prod-form-bulk-oil').value === 'bulk';
             const category = document.getElementById('prod-form-category').value.trim();
             const stock = Number(document.getElementById('prod-form-stock').value);
+            if (!Number.isFinite(stock) || stock < 0) { alert('Stok harus berupa angka 0 atau lebih.'); return; }
+            const normalizedStock = Number(stock.toFixed(3));
             const hpp = Number(document.getElementById('prod-form-hpp').value);
             const price = Number(document.getElementById('prod-form-price').value);
 
@@ -1418,11 +1621,11 @@
             if (id) {
                 const idx = state.products.findIndex(p => p.id === id);
                 if (idx > -1) {
-                    state.products[idx] = { id, unit, code, name, rak, category, stock, hpp, price };
+                    state.products[idx] = { ...state.products[idx], id, unit, code, name, rak, category, isBulkOilProduct, stock: normalizedStock, hpp, price };
                 }
             } else {
                 const newId = 'prod-' + Date.now();
-                state.products.push({ id: newId, unit, code, name, rak, category, stock, hpp, price });
+                state.products.push({ id: newId, unit, code, name, rak, category, isBulkOilProduct, stock: normalizedStock, hpp, price });
             }
 
             saveToLocalStorage();
@@ -1577,7 +1780,7 @@
             const total=amount+fee;
             const id='PAYITEM-'+Date.now();
             const paymentData={id:'PAY-'+Date.now(),type,provider,target,amount,fee,total,status:'Dibayar - menunggu proses'};
-            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} 闂佹剚鍋撻幏锟� ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
+            state.cart.push({id,code:'DIGITAL',name:`${type} ${provider} - ${target}`,price:total,hpp:amount,qty:1,isPayment:true,paymentData});
             renderCart();
             document.getElementById('payment-target').value='';
             document.getElementById('payment-amount').value='';
@@ -1603,24 +1806,37 @@
             let totalHpp = 0;
 
             filteredSales.forEach(s => {
-                totalOmset += s.grandTotal;
-                s.items.forEach(item => {
-                    totalHpp += (item.hpp || 0) * item.qty;
+                totalOmset += Number(s.grandTotal) || 0;
+                (s.items || []).forEach(item => {
+                    totalHpp += (Number(item.hpp) || 0) * (Number(item.qty) || 0);
                 });
             });
 
-            const totalProfit = totalOmset - totalHpp;
+            const grossProfit = totalOmset - totalHpp;
+            const advForProfit = advData();
+            // Kerugian stok dan biaya operasional dihitung pada unit yang sama dengan filter laporan.
+            // Keduanya merupakan beban periode laporan; bukan bagian dari HPP transaksi penjualan.
+            const stockLoss = cashierFilter === 'ALL' ? (advForProfit.stockLogs || []).filter(x =>
+                (unitFilter === 'ALL' || x.unit === unitFilter) &&
+                ['Barang rusak','Voucher kedaluwarsa','Stok hilang'].includes(x.reason)
+            ).reduce((n,x) => n + Math.max(0, Number(x.lossValue) || 0), 0) : 0;
+            const operatingExpense = cashierFilter === 'ALL' ? (advForProfit.operatingExpenses || []).filter(x =>
+                (unitFilter === 'ALL' || x.unit === unitFilter)
+            ).reduce((n,x) => n + Math.max(0, Number(x.amount) || 0), 0) : 0;
+            const totalProfit = grossProfit - stockLoss - operatingExpense;
 
             document.getElementById('rep-total-omset').innerText = formatRp(totalOmset);
             document.getElementById('rep-total-hpp').innerText = formatRp(totalHpp);
             document.getElementById('rep-total-profit').innerText = formatRp(totalProfit);
+            const profitEl = document.getElementById('rep-total-profit');
+            profitEl.title = `Laba kotor ${formatRp(grossProfit)} dikurangi kerugian stok rusak/kedaluwarsa/hilang ${formatRp(stockLoss)} dan biaya operasional ${formatRp(operatingExpense)}. Saat filter kasir aktif, biaya operasional dan kerugian stok tidak dialokasikan ke kasir tertentu sehingga tidak dikurangkan. Belum termasuk penyesuaian lain yang belum dicatat.`;
             document.getElementById('rep-total-count').innerText = filteredSales.length + ' TRX';
 
             const tbody = document.getElementById('sales-history-body');
             tbody.innerHTML = '';
             filteredSales.forEach(s => {
-                const sHpp = s.items.reduce((acc, i) => acc + ((i.hpp || 0) * i.qty), 0);
-                const sProfit = s.grandTotal - sHpp;
+                const sHpp = (s.items || []).reduce((acc, i) => acc + (Number(i.hpp) || 0) * (Number(i.qty) || 0), 0);
+                const sProfit = (Number(s.grandTotal) || 0) - sHpp;
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50">
@@ -1630,7 +1846,7 @@
                         <td class="p-2.5">${s.cashier}</td>
                         <td class="p-2.5"><span class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100">${s.paymentMethod}</span></td>
                         <td class="p-2.5 text-right font-bold text-slate-800">${formatRp(s.grandTotal)}</td>
-                        <td class="p-2.5 text-right font-bold text-emerald-600">${formatRp(sProfit)}</td>
+                        <td class="p-2.5 text-right font-bold ${sProfit < 0 ? 'text-rose-600' : 'text-emerald-600'}">${formatRp(sProfit)}</td>
                         <td class="p-2.5 text-center">
                             <button onclick="reprintReceipt('${s.id}')" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 text-[11px] font-bold rounded">
                                 <i class="fa-solid fa-print mr-1"></i> Struk
@@ -1695,6 +1911,29 @@
                 description: [y.type, y.provider, y.target, y.status].filter(Boolean).join(' - '),
                 income: 0, expense: 0, method: 'Referensi transaksi kasir (tidak dihitung ulang)', cashier: y.cashier || ''
             }));
+            // Masukkan arus kas Operasional Lanjutan ke Buku Kas. Kewajiban/utang
+            // tidak dihitung sebagai kas keluar sampai benar-benar dibayar.
+            const advancedBook = (typeof advData === 'function' ? advData() : {});
+            (Array.isArray(advancedBook.ledger) ? advancedBook.ledger : []).forEach((x, index) => {
+                const direction = String(x.direction || '').toLowerCase();
+                if (direction !== 'in' && direction !== 'out') return;
+                const amount = Math.max(0, Number(x.amount) || 0);
+                if (!amount) return;
+                const rawDate = x.date || x.timestamp || '';
+                const dateValue = rawDate ? new Date(rawDate) : null;
+                const dateLabel = dateValue && !Number.isNaN(dateValue.getTime())
+                    ? dateValue.toLocaleString('id-ID') : String(rawDate || '');
+                const key = 'ADV:' + String(x.ref || x.id || (index + '|' + rawDate + '|' + amount));
+                entries.push({
+                    key, time: bookkeepingTime(rawDate, rawDate), date: dateLabel,
+                    dateKey: bookkeepingDateKey(rawDate, rawDate), trx: x.ref || '',
+                    unit: x.unit || '', type: 'Operasional Lanjutan',
+                    description: [x.type, x.note, x.productName].filter(Boolean).join(' - ') || 'Catatan kas operasional',
+                    income: direction === 'in' ? amount : 0,
+                    expense: direction === 'out' ? amount : 0,
+                    method: x.source || 'Operasional Lanjutan', cashier: ''
+                });
+            });
 
             // Urutkan transaksi secara kronologis; jika waktu sama, gunakan ID agar urutannya stabil.
             entries.sort((a,b) => a.time-b.time || a.key.localeCompare(b.key));
@@ -1767,7 +2006,11 @@
                 sales: state.sales,
                 opnameLogs: state.opnameLogs,
                 expenses: window.expenseLogs || [],
-                payments: window.paymentLogs || []
+                payments: window.paymentLogs || [],
+                advanced: (function () {
+                    try { return JSON.parse(localStorage.getItem(ADV_KEY) || '{}'); }
+                    catch (e) { console.error('Data Operasional Lanjutan tidak dapat dibaca:', e); return {}; }
+                })()
             };
 
             fetch(state.sheetsUrl, {
@@ -1802,6 +2045,9 @@
                 app: 'EMENKA POS',
                 backupVersion: 2,
                 exportedAt: new Date().toISOString(),
+                backupScope: 'POS + Operasional Lanjutan',
+                activeUnit: state.activeUnit,
+                activeCashier: state.activeCashier,
                 state: {
                     products: state.products,
                     sales: state.sales,
@@ -1809,7 +2055,8 @@
                     dailySeq: state.dailySeq
                 },
                 expenses: window.expenseLogs || [],
-                payments: window.paymentLogs || []
+                payments: window.paymentLogs || [],
+                advanced: (typeof advData === 'function' ? advData() : {})
             };
             const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
             const url = URL.createObjectURL(blob);
@@ -1835,27 +2082,60 @@
                 if (!incoming || !Array.isArray(incoming.products) || !Array.isArray(incoming.sales)) {
                     throw new Error('Format backup tidak dikenali. Pilih file Export Data JSON dari POS Emenka.');
                 }
-                const ids = new Set();
+                const productIds = new Set();
+                for (const product of incoming.products) {
+                    if (!product || product.id == null || productIds.has(String(product.id))) {
+                        throw new Error('Ada produk tanpa ID atau ID produk duplikat di file backup.');
+                    }
+                    productIds.add(String(product.id));
+                    if (!Number.isFinite(Number(product.stock)) || Number(product.stock) < 0) {
+                        throw new Error(`Stok produk ${product.name || product.id} tidak valid di file backup.`);
+                    }
+                }
+                const transactionIds = new Set();
                 for (const trx of incoming.sales) {
-                    if (!trx || !trx.id || ids.has(String(trx.id))) {
+                    if (!trx || !trx.id || transactionIds.has(String(trx.id))) {
                         throw new Error('ID transaksi kosong atau duplikat di dalam file backup.');
                     }
-                    ids.add(String(trx.id));
+                    transactionIds.add(String(trx.id));
+                    if (!Array.isArray(trx.items) || !Number.isFinite(Number(trx.grandTotal)) || Number(trx.grandTotal) < 0) {
+                        throw new Error(`Struktur transaksi ${trx.id} tidak lengkap atau totalnya tidak valid.`);
+                    }
                 }
-                const summary = `File: ${file.name}\nProduk di backup: ${incoming.products.length}\nTransaksi di backup: ${incoming.sales.length}\n\nImpor akan MENGGANTI produk, penjualan, dan catatan stok opname di browser ini. Pengaturan Google Sheets saat ini dipertahankan.\n\nLanjutkan hanya jika file backup ini benar?`;
+                if (parsed.advanced != null && (typeof parsed.advanced !== 'object' || Array.isArray(parsed.advanced))) {
+                    throw new Error('Bagian Operasional Lanjutan pada backup tidak valid.');
+                }
+                if (parsed.expenses != null && !Array.isArray(parsed.expenses)) throw new Error('Riwayat pengeluaran pada backup tidak valid.');
+                if (parsed.payments != null && !Array.isArray(parsed.payments)) throw new Error('Riwayat pembayaran pada backup tidak valid.');
+
+                const summary = `File: ${file.name}\nProduk: ${incoming.products.length}\nTransaksi: ${incoming.sales.length}\nPenyesuaian stok: ${(incoming.opnameLogs || []).length}\nPengeluaran: ${(parsed.expenses || []).length}\nPembayaran: ${(parsed.payments || []).length}\nCatatan Operasional Lanjutan: ${parsed.advanced ? 'tersedia' : 'tidak ada (format backup lama)'}\n\nImpor akan MENGGANTI data lokal POS. URL Google Sheets dan antrean sinkronisasi aktif TIDAK diimpor.\n\nLanjutkan hanya jika file backup ini benar?`;
                 if (!confirm(summary)) return;
 
-                // Buat backup kondisi halaman utama sebelum mengganti data.
+                // Unduh cadangan kondisi saat ini sebelum perubahan apa pun.
                 exportDataJSON();
-                state.products = incoming.products;
-                state.sales = incoming.sales;
-                state.opnameLogs = Array.isArray(incoming.opnameLogs) ? incoming.opnameLogs : [];
-                state.dailySeq = Number.isFinite(Number(incoming.dailySeq)) ? Number(incoming.dailySeq) : 1;
-                window.expenseLogs = Array.isArray(parsed.expenses) ? parsed.expenses : [];
-                window.paymentLogs = Array.isArray(parsed.payments) ? parsed.payments : [];
-                // Jangan mengimpor URL webhook atau antrean sync dari backup; pertahankan pengaturan aktif.
-                saveToLocalStorage();
-                alert('Backup berhasil dimuat ke penyimpanan halaman utama. Aplikasi akan dimuat ulang. Sinkronisasi Google Sheets tidak dijalankan otomatis; periksa data terlebih dahulu.');
+                const previous = {
+                    products: state.products, sales: state.sales, opnameLogs: state.opnameLogs,
+                    expenses: window.expenseLogs || [], payments: window.paymentLogs || [],
+                    dailySeq: state.dailySeq, advanced: typeof advData === 'function' ? advData() : {}
+                };
+                try {
+                    state.products = incoming.products;
+                    state.sales = incoming.sales;
+                    state.opnameLogs = Array.isArray(incoming.opnameLogs) ? incoming.opnameLogs : [];
+                    state.dailySeq = Number.isFinite(Number(incoming.dailySeq)) && Number(incoming.dailySeq) > 0 ? Number(incoming.dailySeq) : 1;
+                    window.expenseLogs = Array.isArray(parsed.expenses) ? parsed.expenses : [];
+                    window.paymentLogs = Array.isArray(parsed.payments) ? parsed.payments : [];
+                    if (parsed.advanced && typeof advSave === 'function') advSave(parsed.advanced);
+                    // URL webhook dan antrean sinkronisasi tidak pernah dipulihkan dari file backup.
+                    saveToLocalStorage();
+                } catch (saveError) {
+                    state.products = previous.products; state.sales = previous.sales; state.opnameLogs = previous.opnameLogs;
+                    state.dailySeq = previous.dailySeq; window.expenseLogs = previous.expenses; window.paymentLogs = previous.payments;
+                    if (typeof advSave === 'function') advSave(previous.advanced);
+                    try { saveToLocalStorage(); } catch (_) {}
+                    throw new Error('Penyimpanan gagal. Data sebelumnya dipulihkan: ' + (saveError.message || saveError));
+                }
+                alert('Backup berhasil dimuat ke penyimpanan lokal. Aplikasi akan dimuat ulang. Sinkronisasi Google Sheets tidak dijalankan otomatis; periksa data terlebih dahulu.');
                 location.reload();
             } catch (error) {
                 alert('Impor gagal: ' + (error && error.message ? error.message : 'File tidak dapat dibaca.'));
@@ -1870,6 +2150,170 @@
                 location.reload();
             }
         }
+
+        // Modul operasional lanjutan: penyimpanan terpisah, tanpa menghapus data POS lama.
+        const ADV_KEY='emenka_pos_advanced_v1';
+        function advData(){try{return JSON.parse(localStorage.getItem(ADV_KEY)||'{}')}catch(e){return {}}}
+        function advSave(d){localStorage.setItem(ADV_KEY,JSON.stringify(d))}
+        function advInit(){const a=advData();['adv-oil-product','adv-oil-in-product','adv-stock-product'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const old=el.value;el.innerHTML='<option value="">Pilih produk鈥�</option>'+state.products.filter(p=>p.unit===state.activeUnit).map(p=>`<option value="${String(p.id).replace(/"/g,'&quot;')}">${escapeHTML(p.name)} 鈥� stok ${p.stock}</option>`).join('');if([...el.options].some(o=>o.value===old))el.value=old;});advRenderLogs();advRenderClaims()}
+        function advLog(type,detail){const d=advData();d.logs=d.logs||[];d.logs.unshift({date:new Date().toLocaleString('id-ID'),type,detail});advSave(d);advRenderLogs();if(typeof renderBookkeepingTable==='function')renderBookkeepingTable();if(typeof triggerRealtimeSync==='function')triggerRealtimeSync()}
+        function advSellOil(){const id=document.getElementById('adv-oil-product').value,q=Number(document.getElementById('adv-oil-qty').value),price=Number(document.getElementById('adv-oil-price').value),p=state.products.find(x=>String(x.id)===id);if(!p||!Number.isFinite(q)||q<=0||!Number.isFinite(price)||price<=0)return alert('Pilih produk dan isi jumlah serta harga jual lebih dari 0.');if(Number(p.stock)<q)return alert('Stok tidak cukup. Stok tersedia: '+p.stock);if(!confirm(`Catat penjualan ${p.name} ${q} liter seharga ${formatRp(price)}?`))return;const now=new Date(),dateStr=now.toLocaleDateString('id-ID')+' '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),trxId=generateSequentialTrxId();p.stock=Number((Number(p.stock)-q).toFixed(3));const item={id:p.id,name:p.name,price:price/q,qty:q,lineTotal:price,isOilSale:true};const trx={id:trxId,date:dateStr,timestamp:now.getTime(),unit:state.activeUnit,cashier:state.activeCashier,items:[item],subtotal:price,discount:0,grandTotal:price,cashPaid:price,change:0,paymentMethod:'TUNAI',note:'Penjualan minyak curah; harga manual; '+q+' liter'};state.sales.unshift(trx);const a=advData();a.oilSales=a.oilSales||[];a.oilSales.unshift({date:now.toISOString(),unit:state.activeUnit,productId:p.id,productName:p.name,qtyLiters:q,price,hpp:Number(p.hpp||0)*q,transactionId:trxId});advSave(a);saveToLocalStorage();renderInventoryTable();renderPosProducts();advInit();triggerRealtimeSync();document.getElementById('adv-oil-result').textContent=`Transaksi ${trxId} tersimpan di riwayat penjualan dan kas tunai. Terjual ${q} liter seharga ${formatRp(price)}. Stok tersisa ${p.stock}.`;advLog('Penjualan minyak',`${trxId} 鈥� ${p.name}: ${q} L, ${formatRp(price)}`)}
+        function advLedger(a,entry){a.ledger=a.ledger||[];a.ledger.unshift({...entry,date:entry.date||new Date().toISOString(),unit:state.activeUnit});}
+        function advReceiveOil(){const id=document.getElementById('adv-oil-in-product').value,q=Number(document.getElementById('adv-oil-in-qty').value),cost=Number(document.getElementById('adv-oil-in-cost').value),source=document.getElementById('adv-oil-in-source').value,note=document.getElementById('adv-oil-in-note').value.trim(),p=state.products.find(x=>String(x.id)===id);if(!p||!Number.isFinite(q)||q<=0||!Number.isFinite(cost)||cost<0)return alert('Pilih produk dan isi jumlah liter serta total harga beli dengan benar.');if(!confirm(`Tambah stok ${p.name} sebanyak ${q} liter dengan total harga beli ${formatRp(cost)}?`))return;const before=Number(p.stock)||0,oldHpp=Number(p.hpp)||0;p.stock=Number((before+q).toFixed(3));if(cost>0&&q>0){const incomingUnitCost=cost/q;const weightedHpp=(before*oldHpp+q*incomingUnitCost)/(before+q);p.hpp=Math.round(weightedHpp); }const a=advData();a.oilPurchases=a.oilPurchases||[];const ref='OIL-'+Date.now();const entry={id:ref,date:new Date().toISOString(),productId:p.id,productName:p.name,qtyLiters:q,totalCost:cost,costPerLiter:cost/q,source,note,unit:state.activeUnit,status:source==='Utang pemasok'?'utang':'dibayar'};a.oilPurchases.unshift(entry);/* Catat setiap pembelian pada buku besar: tunai/bank sebagai arus keluar sesuai sumber; utang pemasok sebagai kewajiban, bukan kas keluar. */advLedger(a,{type:source==='Utang pemasok'?'hutang_pemasok':'stock_purchase',direction:source==='Utang pemasok'?'liability':'out',amount:cost,note:`Pembelian oli ${p.name}: ${q} L${note?' 鈥� '+note:''}`,source,ref,productId:p.id,productName:p.name,qty:q,unitLabel:'liter'});advSave(a);saveToLocalStorage();renderInventoryTable();renderPosProducts();advInit();document.getElementById('adv-oil-in-result').textContent=`Stok bertambah ${q} L (${before} 鈫� ${p.stock}). Harga modal rata-rata per liter ${formatRp(p.hpp)}. Pembelian tercatat di riwayat dan buku besar; metode ${source}${source==='Utang pemasok'?' (dicatat sebagai utang, belum mengurangi kas).':'.'}`;advLog('Penerimaan oli',`${p.name}: +${q} L; modal ${formatRp(cost)}; ${source}; ${note}`);}
+        function advRecordCash(){const type=document.getElementById('adv-cash-type').value,amount=Number(document.getElementById('adv-cash-amount').value),note=document.getElementById('adv-cash-note').value;if(!Number.isFinite(amount)||amount<=0)return alert('Isi nominal lebih dari nol.');const a=advData();a.cash=a.cash||[];const entry={date:new Date().toISOString(),type,amount,note,unit:state.activeUnit};a.cash.unshift(entry);if(type!=='float_koin'){const direction=type==='keluar'?'out':'in';advLedger(a,{type,direction,amount,note:note||type,source:'Tunai',ref:'CASH-'+Date.now()});}advSave(a);if(typeof renderBookkeepingTable==='function')renderBookkeepingTable();document.getElementById('adv-cash-result').textContent=type==='float_koin'?'Saldo kas kecil / uang koin tersimpan sebagai catatan saja; tidak dihitung sebagai omzet maupun kas masuk baru.':'Catatan kas tersimpan dan masuk ke buku kas lanjutan. Modal/titipan bukan omzet.';advRenderLogs();advLog('Catatan kas',`${type}: ${formatRp(amount)} ${note}`)}
+        function advCloseCash(){
+          const opening=Number(document.getElementById('adv-open-cash').value),actual=Number(document.getElementById('adv-actual-cash').value);
+          if(!Number.isFinite(opening)||!Number.isFinite(actual)||opening<0||actual<0)return alert('Isi kas awal dan kas fisik saat tutup.');
+          const a=advData(), now=new Date();
+          // Bentuk YYYY-MM-DD dari komponen tanggal lokal; tidak bergantung locale browser.
+          const localDateKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          const todayKey=localDateKey(now);
+          const dateKey=value=>{
+            if(value==null||value==='')return '';
+            if(value instanceof Date)return Number.isNaN(value.getTime())?'':localDateKey(value);
+            if(typeof value==='number'||/^\d{10,13}$/.test(String(value))){const n=Number(value);const d=new Date(String(value).length===10?n*1000:n);return Number.isNaN(d.getTime())?'':localDateKey(d);}
+            const raw=String(value).trim();
+            // Format lama aplikasi: DD/MM/YYYY [HH:mm[:ss]].
+            const m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+.*)?$/);
+            if(m){const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));return d.getFullYear()===Number(m[3])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[1])?localDateKey(d):'';}
+            const d=new Date(raw);return Number.isNaN(d.getTime())?'':localDateKey(d);
+          };
+          const sales=state.sales.filter(s=>s.unit===state.activeUnit&&dateKey(s.timestamp?new Date(Number(s.timestamp)):s.date)===todayKey&&String(s.paymentMethod||'').toUpperCase().includes('TUNAI')).reduce((n,s)=>n+Number(s.grandTotal||0),0);
+          const ledgerToday=(a.ledger||[]).filter(x=>x.unit===state.activeUnit&&dateKey(x.date)===todayKey&&String(x.source||'').toLowerCase()==='tunai');
+          const cashIn=ledgerToday.filter(x=>x.direction==='in').reduce((n,x)=>n+Number(x.amount||0),0);
+          const cashOut=ledgerToday.filter(x=>x.direction==='out').reduce((n,x)=>n+Number(x.amount||0),0);
+          const expected=opening+sales+cashIn-cashOut,diff=actual-expected;
+          if(!confirm(`Hitung kas yang diharapkan?\nKas awal: ${formatRp(opening)}\nPenjualan tunai hari ini: ${formatRp(sales)}\nKas masuk lain: ${formatRp(cashIn)}\nKas keluar tercatat: ${formatRp(cashOut)}\n\nPastikan kas awal adalah saldo sebelum transaksi hari ini.`))return;
+          a.closings=a.closings||[];a.closings.unshift({date:now.toISOString(),unit:state.activeUnit,opening,actual,expected,diff,sales,cashIn,cashOut});advSave(a);
+          document.getElementById('adv-cash-result').textContent=`Perkiraan kas Rp${expected.toLocaleString('id-ID')} (kas awal ${formatRp(opening)} + penjualan tunai ${formatRp(sales)} + kas masuk lain ${formatRp(cashIn)} 鈭� kas keluar tercatat ${formatRp(cashOut)}) | Kas fisik ${formatRp(actual)} | Selisih ${formatRp(diff)}.`;
+          advLog('Tutup kas',`Unit ${state.activeUnit}: perkiraan ${formatRp(expected)}, fisik ${formatRp(actual)}, selisih ${formatRp(diff)}`);
+        }
+
+        function advConsignment(paid){
+          const name=document.getElementById('adv-cons-name').value.trim(),owner=document.getElementById('adv-cons-owner').value.trim(),qty=Number(document.getElementById('adv-cons-qty').value),amount=Number(document.getElementById('adv-cons-due').value),price=Number(document.getElementById('adv-cons-price')?.value||0);
+          if(!name||!owner||!Number.isFinite(qty)||qty<=0||!Number.isFinite(amount)||amount<=0)return alert('Lengkapi nama barang, penitip, jumlah, dan nominal.');
+          const a=advData();a.consignment=a.consignment||[];
+          if(paid){
+            const pending=a.consignment.find(x=>x.unit===state.activeUnit&&x.owner===owner&&x.name===name&&Number(x.due||0)-Number(x.paidAmount||0)>0);
+            if(!pending)return alert('Tidak ditemukan saldo hak penitip yang belum dibayar.');
+            const outstanding=Math.max(0,Number(pending.due||0)-Number(pending.paidAmount||0));
+            if(amount>outstanding)return alert(`Pembayaran melebihi saldo hak penitip ${formatRp(outstanding)}.`);
+            if(!confirm(`Catat pembayaran ${formatRp(amount)} kepada ${owner}? Sisa setelah pembayaran ${formatRp(outstanding-amount)}.`))return;
+            pending.paidAmount=Number((Number(pending.paidAmount||0)+amount).toFixed(2));pending.paid=pending.paidAmount>=Number(pending.due||0);pending.paidDate=new Date().toISOString();pending.status=pending.paid?'Dibayar':'Dibayar sebagian';
+            advLedger(a,{type:'pembayaran_penitip',direction:'out',amount,note:`Pembayaran konsinyasi ${name} kepada ${owner}`,source:'Tunai',ref:'CON-'+Date.now()});
+          }else{
+            if(!Number.isFinite(price)||price<=0)return alert('Isi harga jual per barang lebih dari nol.');
+            const totalSale=qty*price;if(amount>totalSale)return alert('Hak penitip tidak boleh melebihi omzet penjualan.');
+            const now=new Date(),trxId=generateSequentialTrxId(),dateStr=now.toLocaleDateString('id-ID')+' '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+            const item={id:'CON-'+Date.now(),name:'Titipan: '+name,price,qty,lineTotal:totalSale,hpp:amount/qty,isConsignment:true,consignor:owner};
+            state.sales.unshift({id:trxId,date:dateStr,timestamp:now.getTime(),unit:state.activeUnit,cashier:state.activeCashier,items:[item],subtotal:totalSale,discount:0,grandTotal:totalSale,cashPaid:totalSale,change:0,paymentMethod:'TUNAI',note:`Penjualan konsinyasi ${name}; hak penitip ${formatRp(amount)}`});
+            a.consignment.unshift({date:now.toISOString(),name,owner,qty,sellingPrice:price,salesTotal:totalSale,due:amount,paidAmount:0,paid:false,status:'Menunggu pembayaran',unit:state.activeUnit,transactionId:trxId});
+            saveToLocalStorage();
+          }
+          advSave(a);if(typeof renderReports==='function')renderReports();if(typeof triggerRealtimeSync==='function')triggerRealtimeSync();
+          document.getElementById('adv-cons-result').textContent=paid?`Pembayaran ${formatRp(amount)} tercatat. Status: ${pendingStatus(a.consignment,owner,name)}.`:`Penjualan ${qty} ${name} tercatat sebagai omzet ${formatRp(qty*price)}. Hak penitip ${formatRp(amount)}; laba kotor ${formatRp(qty*price-amount)}.`;
+          advLog(paid?'Bayar penitip':'Penjualan konsinyasi',`${name} 鈥� ${owner}; ${qty} unit; ${formatRp(amount)}; ${paid?'pembayaran':'penjualan'}`);
+        }
+        function pendingStatus(rows,owner,name){const x=rows.find(y=>y.unit===state.activeUnit&&y.owner===owner&&y.name===name&&Number(y.due||0)>Number(y.paidAmount||0));return x?`sisa ${formatRp(Number(x.due)-Number(x.paidAmount||0))}`:'lunas'}
+
+        // Definisi penyesuaian stok tunggal berada di bagian patch terverifikasi di bawah.
+        function advUpdateClaimStatus(id,status){
+          const a=advData();
+          const row=(a.stockLogs||[]).find(x=>x.id===id&&x.unit===state.activeUnit);
+          if(!row)return alert('Catatan klaim tidak ditemukan.');
+          if(!['Perlu ditagih/diganti','Sudah diajukan','Sudah diganti','Ditolak'].includes(status))return;
+          if(status==='Sudah diganti'){
+            const raw=prompt('Berapa jumlah barang pengganti yang benar-benar diterima? Stok hanya ditambah setelah barang diterima.',''+(Number(row.qty)||0));
+            if(raw===null)return;
+            const received=Number(raw);
+            if(!Number.isFinite(received)||received<=0||received>Number(row.qty||0))return alert('Jumlah pengganti harus lebih dari nol dan tidak boleh melebihi jumlah klaim.');
+            const product=state.products.find(p=>String(p.id)===String(row.productId)&&p.unit===state.activeUnit);
+            if(!product)return alert('Produk klaim tidak ditemukan pada unit aktif.');
+            if(!confirm(`Konfirmasi penerimaan ${received} ${product.name} sebagai pengganti? Stok akan bertambah dari ${Number(product.stock)||0} menjadi ${(Number(product.stock||0)+received).toFixed(3)}.`))return;
+            const before=Number(product.stock)||0;
+            product.stock=Number((before+received).toFixed(3));
+            row.replacementQty=received;
+            row.replacementReceivedAt=new Date().toISOString();
+            row.replacementStockBefore=before;
+            row.replacementStockAfter=product.stock;
+            row.claimStatus=received===Number(row.qty||0)?'Sudah diganti':'Diganti sebagian';
+            row.claimSettledAt=new Date().toISOString();
+            (a.stockLogs||[]).filter(x=>x.id===id).forEach(x=>{x.claimStatus=row.claimStatus;x.replacementQty=received;x.replacementReceivedAt=row.replacementReceivedAt;});
+            for(const bucket of ['damagedStock','expiredVouchers']){
+              (a[bucket]||[]).forEach(x=>{if(x.id===id){x.claimStatus=row.claimStatus;x.replacementQty=received;x.replacementReceivedAt=row.replacementReceivedAt;}});
+            }
+            a.stockLogs.unshift({id:'RPL-'+Date.now(),date:new Date().toISOString(),unit:state.activeUnit,productId:product.id,name:product.name,reason:'Penggantian sales',qty:received,before,after:product.stock,note:`Penggantian klaim ${id}`,unitCost:Number(product.hpp)||0,lossValue:0,claimValue:0,claimStatus:'Penggantian diterima'});
+            saveToLocalStorage();
+            if(typeof renderInventoryTable==='function')renderInventoryTable();
+            if(typeof renderPosProducts==='function')renderPosProducts();
+          }else{
+            row.claimStatus=status;
+            for(const bucket of ['damagedStock','expiredVouchers']){
+              (a[bucket]||[]).forEach(x=>{if(x.id===id)x.claimStatus=status;});
+            }
+          }
+          advSave(a);advRenderClaims();renderAdvReportSummary();
+          advLog('Pembaruan klaim',`${row.name}: ${row.claimStatus} 鈥� ${row.note||''}`);
+        }
+        function advRenderClaims(){const el=document.getElementById('adv-claims-list');if(!el)return;const rows=(advData().stockLogs||[]).filter(x=>x.unit===state.activeUnit&&Number(x.claimValue||0)>0);el.innerHTML=rows.length?rows.slice(0,30).map(x=>`<div class="border rounded-lg p-2"><div class="font-semibold">${escapeHTML(x.name)} 鈥� ${escapeHTML(x.reason)}</div><div>${Number(x.qty||0)} unit 路 klaim ${formatRp(x.claimValue)}</div><div>Status: <b>${escapeHTML(x.claimStatus||'Perlu ditagih/diganti')}</b></div><div class="flex flex-wrap gap-1 mt-2"><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Sudah diajukan')">Sudah diajukan</button><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Sudah diganti')">Catat barang pengganti diterima</button><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Ditolak')">Ditolak</button></div></div>`).join(''):'Belum ada klaim.'}
+        function advRecordExpense(){const name=document.getElementById('adv-exp-name').value.trim(),amount=Number(document.getElementById('adv-exp-amount').value),source=document.getElementById('adv-exp-source').value;if(!name||!Number.isFinite(amount)||amount<=0)return alert('Isi nama dan nominal biaya.');const a=advData();a.operatingExpenses=a.operatingExpenses||[];a.operatingExpenses.unshift({date:new Date().toISOString(),name,amount,source,unit:state.activeUnit});advLedger(a,{type:'biaya_operasional',direction:source==='Tunai'?'out':'noncash',amount,note:name,source,ref:'OPS-'+Date.now()});advSave(a);document.getElementById('adv-exp-result').textContent=`Biaya ${name} sebesar ${formatRp(amount)} tersimpan sebagai biaya operasional${source==='Tunai'?' dan kas keluar':` (${source}; tidak mengurangi kas tunai)`}.`;advLog('Biaya operasional',`${name}: ${formatRp(amount)} (${source})`)}
+        function advRenderLogs(){const a=advData();const sum=document.getElementById('adv-summary'),logs=document.getElementById('adv-logs');if(!sum||!logs)return;const today=new Date().toDateString(),cashSales=state.sales.filter(x=>new Date(x.timestamp||x.date).toDateString()===today&&x.paymentMethod==='TUNAI').reduce((n,x)=>n+Number(x.grandTotal||0),0),cashAdds=(a.cash||[]).filter(x=>new Date(x.date).toDateString()===today&&['modal','titipan','tambahan'].includes(x.type)).reduce((n,x)=>n+Number(x.amount||0),0),cashOut=(a.cash||[]).filter(x=>new Date(x.date).toDateString()===today&&x.type==='keluar').reduce((n,x)=>n+Number(x.amount||0),0),opsOut=(a.operatingExpenses||[]).filter(x=>new Date(x.date).toDateString()===today&&x.source==='Tunai').reduce((n,x)=>n+Number(x.amount||0),0),consPaid=(a.consignment||[]).filter(x=>x.paid&&new Date(x.date).toDateString()===today).reduce((n,x)=>n+Number(x.due||0),0);const oilBuyToday=(a.oilPurchases||[]).filter(x=>new Date(x.date).toDateString()===today&&x.unit===state.activeUnit).reduce((n,x)=>n+Number(x.totalCost||0),0),oilBuyCash=(a.oilPurchases||[]).filter(x=>new Date(x.date).toDateString()===today&&x.unit===state.activeUnit&&x.source==='Tunai').reduce((n,x)=>n+Number(x.totalCost||0),0),oilBuyDebt=(a.oilPurchases||[]).filter(x=>new Date(x.date).toDateString()===today&&x.unit===state.activeUnit&&x.source==='Utang pemasok').reduce((n,x)=>n+Number(x.totalCost||0),0);sum.innerHTML=`<b>Ringkasan modul:</b> penjualan minyak ${(a.oilSales||[]).length}, pembelian oli ${(a.oilPurchases||[]).length}, catatan kas ${(a.cash||[]).length}, konsinyasi ${(a.consignment||[]).length}, penyesuaian stok ${(a.stockLogs||[]).length}, biaya operasional ${(a.operatingExpenses||[]).length}.<hr class='my-2'><b>Pembelian oli hari ini</b><br>Total pembelian: ${formatRp(oilBuyToday)}<br>Termasuk dibayar tunai: ${formatRp(oilBuyCash)}<br>Dicatat sebagai utang pemasok: ${formatRp(oilBuyDebt)}<hr class='my-2'><b>Rekap kas hari ini (indikatif)</b><br>Penjualan tunai: ${formatRp(cashSales)}<br>Modal/tambahan/titipan pemilik: ${formatRp(cashAdds)}<br>Pengeluaran kas tercatat: ${formatRp(cashOut)}<br>Biaya operasional tunai: ${formatRp(opsOut)}<br>Pembayaran penitip yang tercatat: ${formatRp(consPaid)}<br><b>Catatan:</b> buku kas lanjutan mencatat modal, pembelian oli tunai, biaya tunai, dan pembayaran penitip; laporan keuangan utama masih perlu validasi silang.`;logs.innerHTML=(a.logs||[]).slice(0,40).map(x=>`<div class="border-b pb-2"><b>${escapeHTML(x.type)}</b> 鈥� ${escapeHTML(x.date)}<br>${escapeHTML(x.detail)}</div>`).join('')||'<p class="text-slate-400">Belum ada catatan lanjutan.</p>'}
+        function advExportBackup(){const payload={format:'emenka-advanced-backup-v1',createdAt:new Date().toISOString(),pos:{products:state.products,sales:state.sales,opnameLogs:state.opnameLogs,expenses:window.expenseLogs||[],payments:window.paymentLogs||[],sheetsUrl:state.sheetsUrl,dailySeq:state.dailySeq},advanced:advData()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Emenka_Backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url)}
+        function advImportBackup(event){const file=event.target.files&&event.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(x.format!=='emenka-advanced-backup-v1'||!x.pos||!Array.isArray(x.pos.products)||!Array.isArray(x.pos.sales))throw Error('Format cadangan tidak cocok');if(!confirm('Pulihkan cadangan ini? Data POS saat ini akan diganti. Sebaiknya unduh cadangan kondisi sekarang dahulu.'))return;state.products=x.pos.products;state.sales=x.pos.sales;state.opnameLogs=x.pos.opnameLogs||[];window.expenseLogs=x.pos.expenses||[];window.paymentLogs=x.pos.payments||[];state.dailySeq=Number(x.pos.dailySeq)||1;advSave(x.advanced||{});saveToLocalStorage();alert('Cadangan dipulihkan. Aplikasi akan dimuat ulang.');location.reload()}catch(e){alert('Tidak dapat memulihkan: '+e.message)}finally{event.target.value=''}};r.readAsText(file)}
+
+
+        // Patch salinan: stok rusak/kedaluwarsa mempunyai nilai, status klaim, dan rekap.
+        function advAdjustStock(){
+          const id=document.getElementById('adv-stock-product').value,q=Number(document.getElementById('adv-stock-qty').value),reason=document.getElementById('adv-stock-reason').value,note=document.getElementById('adv-stock-note').value.trim(),p=state.products.find(x=>String(x.id)===id);
+          if(!p||!Number.isFinite(q)||q<=0)return alert('Pilih produk dan isi jumlah dengan benar.');
+          const removes=['Barang rusak','Voucher kedaluwarsa','Stok hilang']; if(removes.includes(reason)&&Number(p.stock)<q)return alert('Jumlah melebihi stok aktif.');
+          const before=Number(p.stock)||0; let after=before;
+          if(removes.includes(reason))after=Number((before-q).toFixed(3)); else if(['Barang kembali','Penggantian sales'].includes(reason))after=Number((before+q).toFixed(3)); else {const v=prompt('Masukkan stok baru setelah koreksi:',String(before));if(v===null||!Number.isFinite(Number(v))||Number(v)<0)return;after=Number(v);}
+          let claimValue=0,claimStatus='Tidak ada klaim';
+          if(reason==='Barang rusak'||reason==='Voucher kedaluwarsa'){
+            const unitCost=Number(p.hpp)||0; claimValue=Number((unitCost*q).toFixed(2));
+            const raw=prompt('Nilai klaim ke pemasok (Rp), isi 0 jika tidak ada klaim:', '0'); if(raw===null)return; if(!Number.isFinite(Number(raw))||Number(raw)<0)return alert('Nilai klaim tidak valid.'); claimValue=Number(raw);
+            claimStatus=claimValue>0?'Perlu ditagih/diganti':'Tidak ada klaim';
+          }
+          if(!confirm(`Simpan ${reason} untuk ${p.name}? Stok ${before} 鈫� ${after}. Nilai klaim Rp${claimValue.toLocaleString('id-ID')}.`))return;
+          p.stock=after; const a=advData(); a.stockLogs=a.stockLogs||[];
+          const entry={id:'STK-'+Date.now(),date:new Date().toISOString(),unit:state.activeUnit,productId:p.id,name:p.name,reason,qty:q,before,after,note,unitCost:Number(p.hpp)||0,lossValue:removes.includes(reason)?Number(((Number(p.hpp)||0)*q).toFixed(2)):0,claimValue,claimStatus};
+          a.stockLogs.unshift(entry); if(reason==='Barang rusak'){a.damagedStock=a.damagedStock||[];a.damagedStock.unshift({...entry,status:'Dipisahkan dari stok aktif'});} if(reason==='Voucher kedaluwarsa'){a.expiredVouchers=a.expiredVouchers||[];a.expiredVouchers.unshift({...entry,status:claimStatus});}
+          advSave(a);saveToLocalStorage();renderInventoryTable();renderPosProducts();advInit();document.getElementById('adv-stock-result').textContent=`Tercatat: ${reason}. Stok ${before} 鈫� ${after}. Nilai modal terkait Rp${entry.lossValue.toLocaleString('id-ID')}; nilai klaim Rp${claimValue.toLocaleString('id-ID')} (${claimStatus}). ${note}`;advLog('Penyesuaian stok',`${p.name}: ${reason}, ${before} 鈫� ${after}; nilai modal ${formatRp(entry.lossValue)}; klaim ${formatRp(claimValue)} (${claimStatus}); ${note}`);renderAdvReportSummary();advRenderClaims();
+        }
+        function renderAdvReportSummary(){const el=document.getElementById('adv-report-summary');if(!el)return;const a=advData(),rows=(a.stockLogs||[]).filter(x=>x.unit===state.activeUnit&&['Barang rusak','Voucher kedaluwarsa'].includes(x.reason));const damaged=rows.filter(x=>x.reason==='Barang rusak'),expired=rows.filter(x=>x.reason==='Voucher kedaluwarsa');const sum=arr=>arr.reduce((n,x)=>n+Number(x.lossValue||0),0),claims=rows.reduce((n,x)=>n+Number(x.claimValue||0),0);el.innerHTML=`<b>Rekap operasional lanjutan 鈥� ${escapeHTML(state.activeUnit||'unit aktif')}</b><div class="grid sm:grid-cols-3 gap-3"><div class="rounded-lg bg-rose-50 p-3">Barang rusak/cacat<br><strong>${damaged.length} catatan</strong><br>Nilai modal: ${formatRp(sum(damaged))}</div><div class="rounded-lg bg-amber-50 p-3">Voucher kedaluwarsa<br><strong>${expired.length} catatan</strong><br>Nilai modal: ${formatRp(sum(expired))}</div><div class="rounded-lg bg-blue-50 p-3">Klaim pemasok<br><strong>${formatRp(claims)}</strong><br>Nilai yang dicatat</div></div><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left border-b"><th class="p-2">Tanggal</th><th class="p-2">Produk</th><th class="p-2">Alasan</th><th class="p-2">Jumlah</th><th class="p-2">Nilai modal</th><th class="p-2">Klaim</th><th class="p-2">Status</th><th class="p-2">Catatan</th></tr></thead><tbody>${rows.map(x=>`<tr class="border-b"><td class="p-2">${escapeHTML(new Date(x.date).toLocaleString('id-ID'))}</td><td class="p-2">${escapeHTML(x.name||'')}</td><td class="p-2">${escapeHTML(x.reason)}</td><td class="p-2">${x.qty}</td><td class="p-2">${formatRp(x.lossValue||0)}</td><td class="p-2">${formatRp(x.claimValue||0)}</td><td class="p-2">${escapeHTML(x.claimStatus||'-')}</td><td class="p-2">${escapeHTML(x.note||'-')}</td></tr>`).join('')||'<tr><td colspan="8" class="p-3 text-slate-500">Belum ada catatan barang rusak atau voucher kedaluwarsa.</td></tr>'}</tbody></table></div><p class="text-xs text-slate-500">Nilai modal dihitung dari HPP produk saat pencatatan 脳 jumlah. Nilai ini dikurangkan dari estimasi laba di ringkasan laporan utama. Klaim pemasok tidak mengurangi kerugian sampai penggantian/pengembalian benar-benar diterima. Estimasi laba ini masih sebelum biaya operasional.</p>`;}
+        const _renderReportsBeforeAdv=renderReports;
+        renderReports=function(){_renderReportsBeforeAdv();renderAdvReportSummary();};
+        const _advRenderLogsBeforeSummary=advRenderLogs;
+        advRenderLogs=function(){_advRenderLogsBeforeSummary();renderAdvReportSummary();};
+        // Tahap 4: ringkasan arus kas dan valuasi persediaan. Ini ringkasan posisi saat ini,
+        // bukan laporan arus kas historis penuh karena transaksi lama mungkin tidak memiliki ledger rinci.
+        const _renderReportsBeforeStage4 = renderReports;
+        renderReports = function(){
+          _renderReportsBeforeStage4();
+          const unit = document.getElementById('rep-filter-unit')?.value || 'ALL';
+          const units = unit === 'ALL' ? ['motor','cell'] : [unit];
+          const sales = (state.sales || []).filter(x => units.includes(x.unit));
+          const salesIn = sales.reduce((n,x)=>n + Math.max(0,Number(x.grandTotal)||0),0);
+          const a = advData();
+          const expenses = (a.operatingExpenses||[]).filter(x=>units.includes(x.unit)).reduce((n,x)=>n+Math.max(0,Number(x.amount)||0),0);
+          const ledgerOut = (a.ledger||[]).filter(x=>units.includes(x.unit) && x.direction==='out').reduce((n,x)=>n+Math.max(0,Number(x.amount)||0),0);
+          const ledgerIn = (a.ledger||[]).filter(x=>units.includes(x.unit) && x.direction==='in').reduce((n,x)=>n+Math.max(0,Number(x.amount)||0),0);
+          // Biaya operasional yang sudah ada di ledger juga dapat tercatat sebagai outflow;
+          // hindari pengurangan ganda dengan memakai nilai keluar ledger bila tersedia.
+          const netCash = salesIn + ledgerIn - Math.max(ledgerOut, expenses);
+          const products = (state.products||[]).filter(x=>units.includes(x.unit));
+          const stockQty = products.reduce((n,x)=>n+Math.max(0,Number(x.stock)||0),0);
+          const stockValue = products.reduce((n,x)=>n+Math.max(0,Number(x.stock)||0)*Math.max(0,Number(x.hpp)||0),0);
+          const put=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
+          put('rep-net-cash',formatRp(netCash)); put('rep-stock-value',formatRp(stockValue));
+          put('rep-stock-qty',stockQty.toLocaleString('id-ID',{maximumFractionDigits:3}));
+          const cashEl=document.getElementById('rep-net-cash'); if(cashEl)cashEl.title='Estimasi ringkasan: penjualan + kas masuk - arus keluar. Bukan saldo kas fisik dan bukan laporan historis lengkap.';
+          const stockEl=document.getElementById('rep-stock-value'); if(stockEl)stockEl.title='Estimasi nilai persediaan berdasarkan HPP produk yang berlaku saat ini, bukan riwayat harga beli tiap batch.';
+        };
+
+        // HPP oli curah dicatat per liter agar laporan mengalikan HPP dengan jumlah liter, bukan HPP penuh per transaksi.
+        const _advSellOilBeforeHpp=advSellOil;
+        advSellOil=function(){const id=document.getElementById('adv-oil-product').value,q=Number(document.getElementById('adv-oil-qty').value),price=Number(document.getElementById('adv-oil-price').value),p=state.products.find(x=>String(x.id)===id);if(!p||!Number.isFinite(q)||q<=0||!Number.isFinite(price)||price<=0)return alert('Pilih produk dan isi jumlah serta harga jual lebih dari 0.');if(Number(p.stock)<q)return alert('Stok tidak cukup. Stok tersedia: '+p.stock);if(!confirm(`Catat penjualan ${p.name} ${q} liter seharga ${formatRp(price)}?`))return;const now=new Date(),dateStr=now.toLocaleDateString('id-ID')+' '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),trxId=generateSequentialTrxId(),hppPerUnit=Number(p.hpp)||0;p.stock=Number((Number(p.stock)-q).toFixed(3));const item={id:p.id,name:p.name,price:price/q,qty:q,lineTotal:price,hpp:hppPerUnit,isOilSale:true,unitLabel:'L'};const trx={id:trxId,date:dateStr,timestamp:now.getTime(),unit:state.activeUnit,cashier:state.activeCashier,items:[item],subtotal:price,discount:0,grandTotal:price,cashPaid:price,change:0,paymentMethod:'TUNAI',note:'Penjualan minyak curah; harga manual; '+q+' liter'};state.sales.unshift(trx);const a=advData();a.oilSales=a.oilSales||[];a.oilSales.unshift({date:now.toISOString(),unit:state.activeUnit,productId:p.id,productName:p.name,qtyLiters:q,price,hpp:hppPerUnit*q,transactionId:trxId});advSave(a);saveToLocalStorage();renderInventoryTable();renderPosProducts();advInit();triggerRealtimeSync();document.getElementById('adv-oil-result').textContent=`Transaksi ${trxId} tersimpan. Terjual ${q} liter seharga ${formatRp(price)}. HPP tercatat ${formatRp(hppPerUnit*q)}. Stok tersisa ${p.stock}.`;advLog('Penjualan minyak',`${trxId} 鈥� ${p.name}: ${q} L, ${formatRp(price)}`);renderReports();};
+
     </script>
-</body>
-</html>
