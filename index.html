@@ -800,11 +800,38 @@
           }
           localStorage.setItem(EMENKA_AUTH_KEY,JSON.stringify(accounts));
         }
+
+        const EMENKA_ATTENDANCE_KEY = 'emenka_pos_attendance_v1';
+        function getAttendanceLogs() {
+          try { const v=JSON.parse(localStorage.getItem(EMENKA_ATTENDANCE_KEY)||'[]'); return Array.isArray(v)?v:[]; }
+          catch(e) { return []; }
+        }
+        function saveAttendanceLogs(rows) {
+          localStorage.setItem(EMENKA_ATTENDANCE_KEY, JSON.stringify(rows));
+        }
+        function startCashierAttendance(user, role) {
+          const rows=getAttendanceLogs();
+          // Tutup sesi aktif sebelumnya pada browser/perangkat ini bila tertinggal.
+          const active=rows.find(r=>r.status==='AKTIF' && r.deviceSession===true);
+          if(active) { active.logoutAt=new Date().toISOString(); active.status='SELESAI_OTOMATIS'; }
+          const now=new Date();
+          const session={id:'ABS-'+now.getTime()+'-'+Math.random().toString(36).slice(2,7),
+            user, role, loginAt:now.toISOString(), logoutAt:null, status:'AKTIF', deviceSession:true};
+          rows.unshift(session); saveAttendanceLogs(rows); return session;
+        }
+        function closeCashierAttendance() {
+          if(!emenkaSession || !emenkaSession.attendanceId) return;
+          const rows=getAttendanceLogs(), row=rows.find(r=>r.id===emenkaSession.attendanceId);
+          if(row && row.status==='AKTIF') { row.logoutAt=new Date().toISOString(); row.status='SELESAI'; }
+          saveAttendanceLogs(rows);
+          if(typeof triggerRealtimeSync==='function') triggerRealtimeSync();
+        }
         async function loginEmenka() {
           const user=document.getElementById('auth-user').value, pw=document.getElementById('auth-password').value;
           let accounts={}; try{accounts=JSON.parse(localStorage.getItem(EMENKA_AUTH_KEY)||'{}')}catch(e){}
           if(!accounts[user] || accounts[user].hash!==await hashPassword(pw)){alert('Nama akun atau password salah.');return;}
-          emenkaSession={user,role:accounts[user].role};
+          const attendance = startCashierAttendance(user, accounts[user].role);
+          emenkaSession={user,role:accounts[user].role,attendanceId:attendance.id};
           // Ingat sesi pada perangkat/browser ini agar tidak diminta login setiap membuka aplikasi.
           localStorage.setItem(EMENKA_SESSION_KEY, JSON.stringify(emenkaSession));
           state.activeCashier=user==='admin'?(state.activeCashier||'Admin'):user;
@@ -812,7 +839,7 @@
           document.getElementById('emenka-auth').classList.add('hidden');
           applyRoleAccess(); document.getElementById('auth-password').value='';
         }
-        function logoutEmenka(){ emenkaSession=null; localStorage.removeItem(EMENKA_SESSION_KEY); document.getElementById('emenka-auth').classList.remove('hidden'); document.getElementById('auth-password').value=''; }
+        function logoutEmenka(){ closeCashierAttendance(); emenkaSession=null; localStorage.removeItem(EMENKA_SESSION_KEY); triggerRealtimeSync(); document.getElementById('emenka-auth').classList.remove('hidden'); document.getElementById('auth-password').value=''; }
         function applyRoleAccess(){
           const admin=!!(emenkaSession&&emenkaSession.role==='admin');
           ['products','opname','reports','expenses','advanced','settings'].forEach(t=>{const n=document.getElementById('nav-'+t);if(n)n.classList.toggle('hidden',!admin);});
@@ -855,6 +882,11 @@
                 const savedAccounts = JSON.parse(localStorage.getItem(EMENKA_AUTH_KEY) || '{}');
                 if (savedSession && savedAccounts[savedSession.user] && savedAccounts[savedSession.user].role === savedSession.role) {
                     emenkaSession = savedSession;
+                    if(!emenkaSession.attendanceId) {
+                      const attendance=startCashierAttendance(savedSession.user,savedSession.role);
+                      emenkaSession.attendanceId=attendance.id;
+                      localStorage.setItem(EMENKA_SESSION_KEY,JSON.stringify(emenkaSession));
+                    }
                     document.getElementById('active-user-label').textContent = savedSession.user === 'admin' ? 'Admin' : savedSession.user;
                     document.getElementById('emenka-auth').classList.add('hidden');
                     applyRoleAccess();
@@ -2022,6 +2054,7 @@
                 opnameLogs: state.opnameLogs,
                 expenses: window.expenseLogs || [],
                 payments: window.paymentLogs || [],
+                attendance: getAttendanceLogs(),
                 advanced: (function () {
                     try { return JSON.parse(localStorage.getItem(ADV_KEY) || '{}'); }
                     catch (e) { console.error('Data Operasional Lanjutan tidak dapat dibaca:', e); return {}; }
@@ -2071,6 +2104,7 @@
                 },
                 expenses: window.expenseLogs || [],
                 payments: window.paymentLogs || [],
+                attendance: getAttendanceLogs(),
                 advanced: (typeof advData === 'function' ? advData() : {})
             };
             const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
@@ -2140,6 +2174,7 @@
                     state.dailySeq = Number.isFinite(Number(incoming.dailySeq)) && Number(incoming.dailySeq) > 0 ? Number(incoming.dailySeq) : 1;
                     window.expenseLogs = Array.isArray(parsed.expenses) ? parsed.expenses : [];
                     window.paymentLogs = Array.isArray(parsed.payments) ? parsed.payments : [];
+                    saveAttendanceLogs(Array.isArray(parsed.attendance) ? parsed.attendance : []);
                     if (parsed.advanced && typeof advSave === 'function') advSave(parsed.advanced);
                     // URL webhook dan antrean sinkronisasi tidak pernah dipulihkan dari file backup.
                     saveToLocalStorage();
