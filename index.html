@@ -142,7 +142,7 @@
                 </div>
                 <button onclick="logoutEmenka()" class="bg-slate-700 text-white text-xs px-2 py-1.5 rounded-lg">Keluar</button>
 
-                <button onclick="syncDataToSheets()" id="btn-sync-status" class="flex items-center space-x-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 transition" title="Sync Data Ke Google Sheets">
+                <button onclick="syncDataToSheets()" id="btn-sync-status" class="flex items-center space-x-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 transition" title="Kirim data ke Google Sheets; periksa Sheets untuk konfirmasi">
                     <i class="fa-solid fa-cloud-arrow-up text-amber-400" id="icon-sync"></i>
                     <span id="label-sync" class="hidden sm:inline">Sync Realtime</span>
                 </button>
@@ -2068,14 +2068,19 @@
                 headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
                 body: JSON.stringify(payload)
             }).then(() => {
-                // no-cors tidak memberi akses ke respons server; permintaan terkirim bukan konfirmasi bahwa Sheets berubah.
+                // mode no-cors tidak mengizinkan browser membaca respons Apps Script.
+                // Karena itu status ini hanya menyatakan permintaan terkirim, bukan konfirmasi data tersimpan.
                 if (iconSync) iconSync.className = "fa-solid fa-cloud-arrow-up text-amber-400";
-                if (labelSync) labelSync.innerText = "Permintaan terkirim*";
-                setTimeout(() => { if (labelSync) labelSync.innerText = "Sync Realtime"; }, 5000);
+                if (labelSync) labelSync.innerText = "Terkirim*";
+                if (labelSync) labelSync.title = "Permintaan dikirim. Periksa Google Sheets untuk memastikan data masuk.";
+                setTimeout(() => {
+                    if (labelSync && labelSync.innerText === "Terkirim*") labelSync.innerText = "Sync Realtime";
+                }, 7000);
             }).catch(err => {
                 console.error("Sync Error:", err);
                 if (iconSync) iconSync.className = "fa-solid fa-triangle-exclamation text-red-400";
-                if (labelSync) labelSync.innerText = "Offline";
+                if (labelSync) labelSync.innerText = navigator.onLine ? "Gagal kirim" : "Perangkat offline";
+                if (labelSync) labelSync.title = "Permintaan tidak berhasil dikirim. Periksa koneksi internet dan URL Web App.";
             });
         }
 
