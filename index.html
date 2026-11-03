@@ -109,7 +109,8 @@
         }
 
     </style>
-<meta name="emenka-build" content="perbaikan-karakter-v1"></head>
+<meta name="emenka-build" content="perbaikan-karakter-v1"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
 <body class="bg-slate-100 text-slate-800 font-sans antialiased app-height flex flex-col overflow-hidden select-none">
 
     <!-- TOP HEADER / BUSINESS TOGGLE -->
@@ -314,6 +315,11 @@
                         <i class="fa-solid fa-plus"></i>
                         <span>Tambah Produk Baru</span>
                     </button>
+                    <label class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm px-4 py-2.5 rounded-lg flex items-center space-x-2 transition shadow cursor-pointer">
+                        <i class="fa-solid fa-file-excel"></i><span>Impor Excel</span>
+                        <input id="product-excel-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importProductsExcel(event)">
+                    </label>
+                    <button type="button" onclick="downloadProductTemplate()" class="border border-emerald-600 text-emerald-700 font-semibold text-xs px-3 py-2 rounded-lg">Unduh Template</button>
                 </div>
 
                 <div id="rep-financial-snapshot" class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -2371,4 +2377,44 @@
         const _advSellOilBeforeHpp=advSellOil;
         advSellOil=function(){const id=document.getElementById('adv-oil-product').value,q=Number(document.getElementById('adv-oil-qty').value),price=Number(document.getElementById('adv-oil-price').value),p=state.products.find(x=>String(x.id)===id);if(!p||!Number.isFinite(q)||q<=0||!Number.isFinite(price)||price<=0)return alert('Pilih produk dan isi jumlah serta harga jual lebih dari 0.');if(Number(p.stock)<q)return alert('Stok tidak cukup. Stok tersedia: '+p.stock);if(!confirm(`Catat penjualan ${p.name} ${q} liter seharga ${formatRp(price)}?`))return;const now=new Date(),dateStr=now.toLocaleDateString('id-ID')+' '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),trxId=generateSequentialTrxId(),hppPerUnit=Number(p.hpp)||0;p.stock=Number((Number(p.stock)-q).toFixed(3));const item={id:p.id,name:p.name,price:price/q,qty:q,lineTotal:price,hpp:hppPerUnit,isOilSale:true,unitLabel:'L'};const trx={id:trxId,date:dateStr,timestamp:now.getTime(),unit:state.activeUnit,cashier:state.activeCashier,items:[item],subtotal:price,discount:0,grandTotal:price,cashPaid:price,change:0,paymentMethod:'TUNAI',note:'Penjualan minyak curah; harga manual; '+q+' liter'};state.sales.unshift(trx);const a=advData();a.oilSales=a.oilSales||[];a.oilSales.unshift({date:now.toISOString(),unit:state.activeUnit,productId:p.id,productName:p.name,qtyLiters:q,price,hpp:hppPerUnit*q,transactionId:trxId});advSave(a);saveToLocalStorage();renderInventoryTable();renderPosProducts();advInit();triggerRealtimeSync();document.getElementById('adv-oil-result').textContent=`Transaksi ${trxId} tersimpan. Terjual ${q} liter seharga ${formatRp(price)}. HPP tercatat ${formatRp(hppPerUnit*q)}. Stok tersisa ${p.stock}.`;advLog('Penjualan minyak',`${trxId} - ${p.name}: ${q} L, ${formatRp(price)}`);renderReports();};
 
+
+        // IMPOR PRODUK EMENKA - fungsi lengkap
+        function downloadProductTemplate(){
+          const csv='Unit Toko,Kode / Barcode,Nama Produk,Lokasi Rak,Kategori,HPP,Harga Jual,Stok\r\nMotor,,Contoh Produk Motor,,,,,\r\nCell,,Contoh Produk Cell,,,,,\r\n';
+          const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+          const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='Template_Impor_Produk_EMENKA.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        }
+        function emenkaParseCsv(text){
+          const rows=[];let row=[],v='',q=false;
+          for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(q&&text[i+1]==='"'){v+='"';i++;}else q=!q;}else if(c===','&&!q){row.push(v);v='';}else if((c==='\n'||c==='\r')&&!q){if(c==='\r'&&text[i+1]==='\n')i++;row.push(v);if(row.some(x=>String(x).trim()))rows.push(row);row=[];v='';}else v+=c;}
+          row.push(v);if(row.some(x=>String(x).trim()))rows.push(row);return rows;
+        }
+        function emenkaImportNumber(v){if(v===null||v===undefined||String(v).trim()==='')return null;if(typeof v==='number')return Number.isFinite(v)?v:null;let s=String(v).trim().replace(/\s/g,'').replace(/Rp/ig,'');if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s))s=s.replace(/\./g,'').replace(',','.');else if(/^\d+,\d+$/.test(s))s=s.replace(',','.');else s=s.replace(/,/g,'');const n=Number(s);return Number.isFinite(n)&&n>=0?n:null;}
+        async function importProductsExcel(event){
+          const file=event.target.files&&event.target.files[0];if(!file)return;
+          try{
+            if(!emenkaSession||emenkaSession.role!=='admin'){alert('Hanya Admin yang boleh mengimpor produk.');return;}
+            let rows;
+            if(file.name.toLowerCase().endsWith('.csv')) rows=emenkaParseCsv(await file.text());
+            else {if(!window.XLSX){alert('Pembaca Excel belum termuat. Simpan file Google Sheets sebagai CSV, lalu impor file CSV tersebut.');return;}const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});}
+            if(!rows||rows.length<2){alert('File belum berisi baris produk.');return;}
+            const norm=x=>String(x??'').trim().toLowerCase().replace(/\s+/g,' ');
+            const headers=rows[0].map(norm);const find=(...names)=>headers.findIndex(h=>names.includes(h));
+            const ix={unit:find('unit toko','unit'),code:find('kode / barcode','kode/barcode','kode','barcode'),name:find('nama produk','produk'),rak:find('lokasi rak','rak'),cat:find('kategori'),hpp:find('hpp'),price:find('harga jual'),stock:find('stok')};
+            if(ix.unit<0||ix.name<0){alert('Kolom wajib tidak ditemukan. Gunakan judul Unit Toko dan Nama Produk.');return;}
+            const get=(r,k)=>ix[k]<0?'':String(r[ix[k]]??'').trim();const plan=[],errors=[];
+            for(let n=1;n<rows.length;n++){const r=rows[n];if(!r||!r.some(x=>String(x??'').trim()))continue;const unit=get(r,'unit'),name=get(r,'name'),code=get(r,'code');if(!['motor','cell'].includes(norm(unit))||!name){errors.push('Baris '+(n+1)+': Unit Toko harus Motor/Cell dan Nama Produk wajib diisi.');continue;}
+              const numeric={hpp: get(r,'hpp'),price:get(r,'price'),stock:get(r,'stock')};let bad=false;for(const k of Object.keys(numeric)){if(numeric[k]!==''&&emenkaImportNumber(numeric[k])===null){errors.push('Baris '+(n+1)+': nilai '+k.toUpperCase()+' tidak valid.');bad=true;}}if(bad)continue;
+              let found=code?state.products.find(p=>norm(p.unit)===norm(unit)&&norm(p.code)===norm(code)):null;if(!found)found=state.products.find(p=>norm(p.unit)===norm(unit)&&norm(p.name)===norm(name));
+              const patch={unit:unit==='motor'?'Motor':'Cell',name};if(code)patch.code=code;for(const [k,field] of [['rak','rak'],['cat','category']])if(get(r,k)!=='')patch[field]=get(r,k);for(const [k,field] of [['hpp','hpp'],['price','price'],['stock','stock']])if(numeric[k]!=='')patch[field]=emenkaImportNumber(numeric[k]);
+              plan.push({found,patch,row:n+1});
+            }
+            if(!plan.length){alert('Tidak ada baris valid untuk diimpor.\n'+errors.join('\n'));return;}
+            const add=plan.filter(x=>!x.found).length,upd=plan.length-add;const msg='Pratinjau impor produk:\nBaris valid: '+plan.length+'\nProduk baru: '+add+'\nProduk diperbarui: '+upd+'\nBaris dilewati: '+errors.length+'\n\nKolom kosong pada produk lama akan dipertahankan. Lanjutkan?';
+            if(!confirm(msg))return;
+            for(const item of plan){if(item.found)Object.assign(item.found,item.patch);else state.products.push({id:'prod-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),unit:item.patch.unit,code:item.patch.code||'',name:item.patch.name,rak:item.patch.rak||'',category:item.patch.category||'',isBulkOilProduct:false,stock:item.patch.stock??0,hpp:item.patch.hpp??0,price:item.patch.price??0});}
+            saveToLocalStorage();renderInventoryTable();renderPosProducts();if(typeof renderOpnameProductDropdown==='function')renderOpnameProductDropdown();if(typeof renderExpenseProductOptions==='function')renderExpenseProductOptions();triggerRealtimeSync();
+            alert('Impor selesai. Produk baru: '+add+'. Produk diperbarui: '+upd+'.'+(errors.length?'\nBaris dilewati:\n'+errors.join('\n'):''));
+          }catch(err){console.error(err);alert('Impor gagal: '+(err&&err.message?err.message:String(err)));}finally{event.target.value='';}
+        }
     </script>
