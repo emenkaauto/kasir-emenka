@@ -321,7 +321,7 @@
 
                 <div id="rep-financial-snapshot" class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Arus kas bersih tercatat</div><div id="rep-net-cash" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Penerimaan penjualan dikurangi pengeluaran.</div></div>
-                    <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Nilai persediaan saat ini</div><div id="rep-stock-value" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Stok unit aktif × HPP produk.</div></div>
+                    <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Nilai persediaan saat ini</div><div id="rep-stock-value" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Stok unit aktif 脳 HPP produk.</div></div>
                     <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Jumlah unit persediaan</div><div id="rep-stock-qty" class="text-lg font-extrabold mt-1">0</div><div class="text-[11px] text-slate-500">Total kuantitas stok unit aktif.</div></div>
                 </div>
 
@@ -606,6 +606,7 @@
                             Reset ke Data Sample
                         </button>
                     </div>
+                    <p class="text-xs text-slate-500">Backup versi 3 menyimpan data operasional dan pengaturan EMENKA POS. Password dan sesi login tidak disertakan. Simpan file JSON di tempat aman dan jangan membagikannya sembarangan.</p>
                 </div>
             </div>
         </section>
@@ -1708,7 +1709,7 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            document.getElementById('excel-file-name').textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            document.getElementById('excel-file-name').textContent = `馃搫 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
             document.getElementById('excel-file-info').classList.remove('hidden');
 
             const reader = new FileReader();
@@ -1828,7 +1829,7 @@
 
             document.getElementById('excel-preview-stats').innerHTML = `
                 <span class="text-emerald-700 font-bold">+${countNew} Baru</span> | 
-                <span class="text-amber-700 font-bold">↻${countUpdate} Update</span> | 
+                <span class="text-amber-700 font-bold">鈫�${countUpdate} Update</span> | 
                 <span class="text-red-600 font-bold">!${countInvalid} Gagal</span>
             `;
 
@@ -2159,37 +2160,149 @@
             triggerRealtimeSync();
         }
 
+        // Backup v3: mencadangkan seluruh localStorage milik EMENKA POS,
+        // kecuali password akun dan sesi login yang tidak boleh dipindahkan.
+        const EMENKA_BACKUP_VERSION = 3;
+        const EMENKA_BACKUP_PREFIX = 'emenka_pos_';
+        const EMENKA_BACKUP_EXCLUDED_KEYS = [EMENKA_AUTH_KEY, EMENKA_SESSION_KEY];
+
+        function collectEmenkaBackupStorage() {
+            const snapshot = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (!key || !key.startsWith(EMENKA_BACKUP_PREFIX) || EMENKA_BACKUP_EXCLUDED_KEYS.includes(key)) continue;
+                snapshot[key] = localStorage.getItem(key);
+            }
+            // Pastikan data utama yang sedang aktif ikut masuk walau belum tersimpan.
+            snapshot['emenka_pos_products'] = JSON.stringify(state.products || []);
+            snapshot['emenka_pos_sales'] = JSON.stringify(state.sales || []);
+            snapshot['emenka_pos_opname'] = JSON.stringify(state.opnameLogs || []);
+            snapshot['emenka_pos_expenses'] = JSON.stringify(window.expenseLogs || []);
+            snapshot['emenka_pos_payments'] = JSON.stringify(window.paymentLogs || []);
+            if (state.sheetsUrl) snapshot['emenka_pos_sheets_url'] = String(state.sheetsUrl);
+            return snapshot;
+        }
+
         function exportDataJSON() {
-            const backup = {
-                app: 'EMENKA POS',
-                exportedAt: new Date().toISOString(),
-                state: { products: state.products, sales: state.sales, opnameLogs: state.opnameLogs },
-                expenses: window.expenseLogs || [],
-                payments: window.paymentLogs || []
-            };
-            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = `POS_Emenka_Backup_${Date.now()}.json`;
-            a.click(); URL.revokeObjectURL(url);
+            try {
+                const storage = collectEmenkaBackupStorage();
+                const backup = {
+                    app: 'EMENKA POS',
+                    backupVersion: EMENKA_BACKUP_VERSION,
+                    backupType: 'FULL_LOCAL_DATA',
+                    exportedAt: new Date().toISOString(),
+                    includes: Object.keys(storage),
+                    excludes: ['akun/password', 'sesi login'],
+                    storage: storage,
+                    // Bagian kompatibilitas untuk pembaca backup versi lama.
+                    state: {
+                        products: state.products || [],
+                        sales: state.sales || [],
+                        opnameLogs: state.opnameLogs || []
+                    },
+                    expenses: window.expenseLogs || [],
+                    payments: window.paymentLogs || []
+                };
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `EMENKA_POS_BACKUP_V${EMENKA_BACKUP_VERSION}_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                // Jangan cabut URL pada saat yang sama dengan klik; beberapa browser tablet perlu jeda.
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+                alert('Backup JSON berhasil disiapkan. Pastikan file tersimpan di perangkat Anda.');
+            } catch (err) {
+                alert('Ekspor backup gagal: ' + (err && err.message ? err.message : err));
+            }
+        }
+
+        function validateEmenkaBackup(parsed) {
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Isi file bukan objek backup JSON.');
+            if (parsed.app && parsed.app !== 'EMENKA POS') throw new Error('File ini bukan backup EMENKA POS.');
+            if (parsed.storage !== undefined) {
+                if (!parsed.storage || typeof parsed.storage !== 'object' || Array.isArray(parsed.storage)) throw new Error('Bagian penyimpanan backup tidak valid.');
+                const storage = parsed.storage;
+                for (const [key, value] of Object.entries(storage)) {
+                    if (!key.startsWith(EMENKA_BACKUP_PREFIX)) throw new Error('Backup memuat nama data yang tidak dikenali: ' + key);
+                    if (EMENKA_BACKUP_EXCLUDED_KEYS.includes(key)) throw new Error('Backup tidak boleh mengubah password atau sesi login.');
+                    if (typeof value !== 'string') throw new Error('Format data tidak valid pada ' + key + '.');
+                }
+                for (const key of ['emenka_pos_products', 'emenka_pos_sales']) {
+                    if (typeof storage[key] !== 'string') throw new Error('Backup penuh tidak memiliki data wajib: ' + key + '.');
+                    const value = JSON.parse(storage[key]);
+                    if (!Array.isArray(value)) throw new Error('Data ' + key + ' harus berupa daftar.');
+                }
+                return { type: 'full', storage };
+            }
+            // Dukungan untuk format backup lama (versi 1/2).
+            const incoming = parsed.state && typeof parsed.state === 'object' ? parsed.state : parsed;
+            if (!Array.isArray(incoming.products) || !Array.isArray(incoming.sales)) throw new Error('Struktur backup lama tidak lengkap: produk dan penjualan wajib tersedia.');
+            for (const key of ['opnameLogs']) if (incoming[key] !== undefined && !Array.isArray(incoming[key])) throw new Error('Data ' + key + ' tidak valid.');
+            if (parsed.expenses !== undefined && !Array.isArray(parsed.expenses)) throw new Error('Data pengeluaran tidak valid.');
+            if (parsed.payments !== undefined && !Array.isArray(parsed.payments)) throw new Error('Data pembayaran tidak valid.');
+            return { type: 'legacy', incoming, parsed };
         }
 
         async function importDataJSON(event) {
-            const file = event.target.files[0];
+            const input = event && event.target;
+            const file = input && input.files && input.files[0];
             if (!file) return;
             try {
+                if (file.size > 25 * 1024 * 1024) throw new Error('Ukuran file terlalu besar (maksimal 25 MB).');
                 const parsed = JSON.parse(await file.text());
-                const incoming = parsed.state || parsed;
-                if (!Array.isArray(incoming.products) || !Array.isArray(incoming.sales)) throw new Error('File tidak valid.');
-                if (!confirm('Ganti seluruh data lokal dengan data backup ini?')) return;
-                state.products = incoming.products;
-                state.sales = incoming.sales;
-                state.opnameLogs = incoming.opnameLogs || [];
-                window.expenseLogs = parsed.expenses || [];
-                window.paymentLogs = parsed.payments || [];
-                saveToLocalStorage();
-                alert('Backup berhasil dimuat!');
+                const checked = validateEmenkaBackup(parsed);
+                const isFull = checked.type === 'full';
+                const promptText = isFull
+                    ? 'Pulihkan BACKUP LENGKAP EMENKA POS? Data operasional lokal akan diganti sesuai isi backup. Password dan sesi login perangkat ini TIDAK diubah.'
+                    : 'Pulihkan backup JSON versi lama? Data yang tersedia di file akan diperbarui. Bagian yang tidak ada di file akan dipertahankan agar tidak terhapus. Password dan sesi login tidak diubah.';
+                if (!confirm(promptText)) return;
+
+                // Simpan kondisi saat ini agar dapat dikembalikan jika penulisan gagal.
+                const before = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith(EMENKA_BACKUP_PREFIX)) before[key] = localStorage.getItem(key);
+                }
+                try {
+                    if (isFull) {
+                        // Hanya backup v3 yang boleh mengganti snapshot penuh.
+                        const keysToRemove = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key && key.startsWith(EMENKA_BACKUP_PREFIX) && !EMENKA_BACKUP_EXCLUDED_KEYS.includes(key)) keysToRemove.push(key);
+                        }
+                        keysToRemove.forEach(key => localStorage.removeItem(key));
+                        for (const [key, value] of Object.entries(checked.storage)) localStorage.setItem(key, value);
+                    } else {
+                        const data = checked.incoming;
+                        localStorage.setItem('emenka_pos_products', JSON.stringify(data.products));
+                        localStorage.setItem('emenka_pos_sales', JSON.stringify(data.sales));
+                        if (Array.isArray(data.opnameLogs)) localStorage.setItem('emenka_pos_opname', JSON.stringify(data.opnameLogs));
+                        if (Array.isArray(checked.parsed.expenses)) localStorage.setItem('emenka_pos_expenses', JSON.stringify(checked.parsed.expenses));
+                        if (Array.isArray(checked.parsed.payments)) localStorage.setItem('emenka_pos_payments', JSON.stringify(checked.parsed.payments));
+                    }
+                } catch (writeError) {
+                    // Rollback seluruh key EMENKA POS jika penyimpanan gagal di tengah proses.
+                    const currentKeys = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith(EMENKA_BACKUP_PREFIX) && !EMENKA_BACKUP_EXCLUDED_KEYS.includes(key)) currentKeys.push(key);
+                    }
+                    currentKeys.forEach(key => localStorage.removeItem(key));
+                    for (const [key, value] of Object.entries(before)) localStorage.setItem(key, value);
+                    throw writeError;
+                }
+                alert('Pemulihan backup berhasil. EMENKA POS akan dimuat ulang. Password dan sesi login tetap mengikuti perangkat ini.');
                 location.reload();
-            } catch (err) { alert('Impor gagal: ' + err.message); }
+            } catch (err) {
+                alert('Impor backup gagal: ' + (err && err.message ? err.message : err));
+            } finally {
+                if (input) input.value = '';
+            }
         }
 
         function resetSampleData() {
