@@ -324,7 +324,7 @@
 
                 <div id="rep-financial-snapshot" class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Arus kas bersih tercatat</div><div id="rep-net-cash" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Penerimaan penjualan dikurangi biaya operasional dan arus keluar buku kas lanjutan.</div></div>
-                    <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Nilai persediaan saat ini</div><div id="rep-stock-value" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Stok unit aktif 鑴� HPP produk saat ini.</div></div>
+                    <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Nilai persediaan saat ini</div><div id="rep-stock-value" class="text-lg font-extrabold mt-1">Rp 0</div><div class="text-[11px] text-slate-500">Stok unit aktif 閼达拷 HPP produk saat ini.</div></div>
                     <div class="bg-white p-4 rounded-xl border"><div class="text-xs text-slate-500 font-semibold">Jumlah unit persediaan</div><div id="rep-stock-qty" class="text-lg font-extrabold mt-1">0</div><div class="text-[11px] text-slate-500">Total kuantitas stok produk unit aktif.</div></div>
                 </div>
 
@@ -620,7 +620,7 @@
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
                     <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-database text-blue-600 mr-2"></i>Backup & Export Data Lokal</h2>
                     <div class="flex flex-wrap gap-2 pt-2">
-                        <button onclick="exportDataJSON()" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center space-x-1">
+                        <button type="button" id="btn-export-json" onclick="window.exportDataJSON()" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center space-x-1">
                             <i class="fa-solid fa-download mr-1"></i> Export Data JSON
                         </button>
                         <button onclick="document.getElementById('backup-json-file').click()" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center space-x-1">
@@ -694,6 +694,11 @@
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Jenis Penjualan</label>
                     <select id="prod-form-bulk-oil" class="w-full p-2 border border-slate-300 rounded-lg"><option value="normal">Produk biasa / oli kemasan</option><option value="bulk">Oli curah / literan</option></select>
+                    <div class="flex flex-wrap gap-3 mt-2">
+                        <button type="button" onclick="manageProductSaleType('add')" class="text-blue-700 text-[10px] font-bold">+ Tambah Jenis</button>
+                        <button type="button" onclick="manageProductSaleType('edit')" class="text-amber-700 text-[10px] font-bold">Edit Jenis</button>
+                        <button type="button" onclick="manageProductSaleType('delete')" class="text-red-700 text-[10px] font-bold">Hapus Jenis</button>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
@@ -877,6 +882,93 @@
             cats=cats.filter(x=>x!==selected); localStorage.setItem('emenka_pos_categories_v1',JSON.stringify(cats));
             populateProductCategoryOptions(cats[0]||''); populateCategoryFilter();
           }
+        }
+
+        // Jenis Penjualan: normal dan bulk adalah tipe bawaan yang menjaga mekanisme kasir lama.
+        const PRODUCT_SALE_TYPES_KEY = 'emenka_pos_sale_types_v1';
+        const DEFAULT_PRODUCT_SALE_TYPES = [
+            { value: 'normal', label: 'Produk biasa / oli kemasan', locked: true },
+            { value: 'bulk', label: 'Oli curah / literan', locked: true }
+        ];
+        function getProductSaleTypes() {
+            let saved = [];
+            try { saved = JSON.parse(localStorage.getItem(PRODUCT_SALE_TYPES_KEY) || '[]'); } catch (_) {}
+            if (!Array.isArray(saved)) saved = [];
+            const custom = saved.filter(t => t && typeof t.value === 'string' && typeof t.label === 'string' &&
+                t.value && t.label.trim() && !['normal', 'bulk'].includes(t.value));
+            return [...DEFAULT_PRODUCT_SALE_TYPES, ...custom];
+        }
+        function getCustomProductSaleTypesForBackup() {
+            try {
+                return getProductSaleTypes().filter(t => !t.locked).map(t => ({
+                    value: String(t.value), label: String(t.label)
+                }));
+            } catch (_) { return []; }
+        }
+        function saveCustomProductSaleTypes(types) {
+            const custom = (Array.isArray(types) ? types : []).filter(t =>
+                t && typeof t.value === 'string' && typeof t.label === 'string' &&
+                t.value && t.label.trim() && !['normal', 'bulk'].includes(t.value)
+            ).map(t => ({ value: t.value, label: t.label.trim() }));
+            localStorage.setItem(PRODUCT_SALE_TYPES_KEY, JSON.stringify(custom));
+        }
+        function populateProductSaleTypeOptions(selected = 'normal') {
+            const el = document.getElementById('prod-form-bulk-oil');
+            if (!el) return;
+            const types = getProductSaleTypes();
+            if (selected && !types.some(t => t.value === selected)) {
+                types.push({ value: selected, label: selected });
+            }
+            el.innerHTML = types.map(t => {
+                const option = document.createElement('option');
+                option.value = t.value; option.textContent = t.label;
+                return option.outerHTML;
+            }).join('');
+            el.value = selected && types.some(t => t.value === selected) ? selected : 'normal';
+        }
+        function manageProductSaleType(action) {
+            const el = document.getElementById('prod-form-bulk-oil');
+            let types = getProductSaleTypes();
+            const selected = el ? el.value : 'normal';
+            if (action === 'add') {
+                const label = prompt('Nama jenis penjualan baru:');
+                if (!label || !label.trim()) return;
+                const clean = label.trim();
+                if (types.some(t => t.label.toLowerCase() === clean.toLowerCase())) {
+                    alert('Jenis penjualan dengan nama tersebut sudah ada.'); return;
+                }
+                const value = 'custom_' + Date.now().toString(36);
+                types.push({ value, label: clean });
+                try { saveCustomProductSaleTypes(types); }
+                catch (err) { alert('Jenis tidak dapat disimpan di browser: ' + (err.message || err)); return; }
+                populateProductSaleTypeOptions(value);
+            } else if (action === 'edit') {
+                const current = types.find(t => t.value === selected);
+                if (!current) return alert('Pilih jenis penjualan terlebih dahulu.');
+                if (current.locked) return alert('Jenis bawaan tidak dapat diubah karena terkait mekanisme kasir lama.');
+                const label = prompt('Ubah nama jenis penjualan:', current.label);
+                if (!label || !label.trim()) return;
+                if (types.some(t => t.value !== selected && t.label.toLowerCase() === label.trim().toLowerCase()))
+                    return alert('Nama jenis penjualan tersebut sudah digunakan.');
+                types = types.map(t => t.value === selected ? { ...t, label: label.trim() } : t);
+                try { saveCustomProductSaleTypes(types); }
+                catch (err) { alert('Perubahan tidak dapat disimpan: ' + (err.message || err)); return; }
+                populateProductSaleTypeOptions(selected);
+            } else if (action === 'delete') {
+                const current = types.find(t => t.value === selected);
+                if (!current) return alert('Pilih jenis penjualan terlebih dahulu.');
+                if (current.locked) return alert('Jenis bawaan tidak dapat dihapus karena terkait mekanisme kasir lama.');
+                const used = (state.products || []).filter(p =>
+                    String(p.saleType || (p.isBulkOilProduct ? 'bulk' : 'normal')) === selected
+                );
+                if (used.length) return alert('Jenis ini masih digunakan oleh ' + used.length +
+                    ' produk. Ubah jenis produk tersebut terlebih dahulu sebelum menghapusnya.');
+                if (!confirm('Hapus jenis penjualan "' + current.label + '"?')) return;
+                types = types.filter(t => t.value !== selected);
+                try { saveCustomProductSaleTypes(types); }
+                catch (err) { alert('Jenis tidak dapat dihapus: ' + (err.message || err)); return; }
+                populateProductSaleTypeOptions('normal');
+            }
         }
 
         window.onload = async function() {
@@ -1620,7 +1712,7 @@
                 document.getElementById('prod-form-code').value = p.code;
                 document.getElementById('prod-form-name').value = p.name;
                 populateProductLocationOptions(p.rak || '');
-                document.getElementById('prod-form-bulk-oil').value = p.isBulkOilProduct ? 'bulk' : 'normal';
+                populateProductSaleTypeOptions(p.saleType || (p.isBulkOilProduct ? 'bulk' : 'normal'));
                 populateProductCategoryOptions(p.category);
                 document.getElementById('prod-form-stock').value = p.stock;
                 document.getElementById('prod-form-hpp').value = p.hpp;
@@ -1631,7 +1723,7 @@
                 document.getElementById('prod-form-id').value = '';
                 document.getElementById('prod-form-unit').value = state.activeUnit;
                 populateProductLocationOptions('Etalase');
-                document.getElementById('prod-form-bulk-oil').value = 'normal';
+                populateProductSaleTypeOptions('normal');
                 document.getElementById('prod-form-code').value = scannedCode || '';
                 if (scannedCode) {
                     document.getElementById('modal-product-title').innerText = 'Daftarkan Produk dari Barcode';
@@ -1650,7 +1742,8 @@
             const code = document.getElementById('prod-form-code').value.trim();
             const name = document.getElementById('prod-form-name').value.trim();
             const rak = document.getElementById('prod-form-rak').value.trim();
-            const isBulkOilProduct = document.getElementById('prod-form-bulk-oil').value === 'bulk';
+            const saleType = document.getElementById('prod-form-bulk-oil').value || 'normal';
+            const isBulkOilProduct = saleType === 'bulk';
             const category = document.getElementById('prod-form-category').value.trim();
             const stock = Number(document.getElementById('prod-form-stock').value);
             if (!Number.isFinite(stock) || stock < 0) { alert('Stok harus berupa angka 0 atau lebih.'); return; }
@@ -1674,7 +1767,7 @@
             if (id) {
                 const idx = state.products.findIndex(p => p.id === id);
                 if (idx > -1) {
-                    state.products[idx] = { ...state.products[idx], id, unit, code, name, rak, category, isBulkOilProduct, stock: normalizedStock, hpp, price };
+                    state.products[idx] = { ...state.products[idx], id, unit, code, name, rak, category, saleType, isBulkOilProduct, stock: normalizedStock, hpp, price };
                 }
             } else {
                 const newId = 'prod-' + Date.now();
@@ -2099,35 +2192,98 @@
         }
 
         function exportDataJSON() {
-            // Format ini mendukung backup versi baru dan tetap menyertakan seluruh data bisnis.
-            const backup = {
-                app: 'EMENKA POS',
-                backupVersion: 2,
-                exportedAt: new Date().toISOString(),
-                backupScope: 'POS + Operasional Lanjutan',
-                activeUnit: state.activeUnit,
-                activeCashier: state.activeCashier,
-                state: {
-                    products: state.products,
-                    sales: state.sales,
-                    opnameLogs: state.opnameLogs,
-                    dailySeq: state.dailySeq
-                },
-                expenses: window.expenseLogs || [],
-                payments: window.paymentLogs || [],
-                attendance: getAttendanceLogs(),
-                advanced: (typeof advData === 'function' ? advData() : {})
-            };
-            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = `POS_Emenka_Backup_${Date.now()}.json`;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            // Backup utama harus tetap dapat dibuat meskipun data tambahan gagal dibaca.
+            try {
+                if (typeof state === 'undefined' || !state) {
+                    throw new Error('Data aplikasi belum siap. Muat ulang halaman lalu coba lagi.');
+                }
+
+                const safeArray = (value) => Array.isArray(value) ? value : [];
+                let attendance = [];
+                let advanced = {};
+                let customSaleTypes = [];
+
+                try {
+                    if (typeof getAttendanceLogs === 'function') {
+                        attendance = safeArray(getAttendanceLogs());
+                    }
+                } catch (e) {
+                    console.warn('Catatan kehadiran tidak ikut diekspor:', e);
+                }
+
+                try {
+                    if (typeof advData === 'function') {
+                        advanced = advData() || {};
+                    }
+                } catch (e) {
+                    console.warn('Data operasional lanjutan tidak ikut diekspor:', e);
+                }
+
+                try {
+                    if (typeof getCustomProductSaleTypesForBackup === 'function') {
+                        customSaleTypes = safeArray(getCustomProductSaleTypesForBackup());
+                    }
+                } catch (e) {
+                    console.warn('Jenis penjualan khusus tidak ikut diekspor:', e);
+                }
+
+                const backup = {
+                    app: 'EMENKA POS',
+                    backupVersion: 2,
+                    exportedAt: new Date().toISOString(),
+                    backupScope: 'POS + Operasional Lanjutan',
+                    activeUnit: state.activeUnit || '',
+                    activeCashier: state.activeCashier || '',
+                    state: {
+                        products: safeArray(state.products),
+                        sales: safeArray(state.sales),
+                        opnameLogs: safeArray(state.opnameLogs),
+                        dailySeq: state.dailySeq,
+                        productSaleTypes: customSaleTypes
+                    },
+                    expenses: safeArray(window.expenseLogs),
+                    payments: safeArray(window.paymentLogs),
+                    attendance: attendance,
+                    advanced: advanced
+                };
+
+                const json = JSON.stringify(backup, null, 2);
+                if (!json || json === '{}') {
+                    throw new Error('Data backup tidak berhasil disusun.');
+                }
+
+                const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+                if (!blob || !blob.size) {
+                    throw new Error('File backup kosong dan tidak dapat dibuat.');
+                }
+
+                const fileName = `POS_Emenka_Backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = fileName;
+                anchor.style.display = 'none';
+                document.body.appendChild(anchor);
+
+                // Dipanggil langsung dari klik pengguna agar tidak dianggap unduhan otomatis tertunda.
+                anchor.click();
+
+                setTimeout(() => {
+                    try { URL.revokeObjectURL(url); } catch (_) {}
+                    try { anchor.remove(); } catch (_) {}
+                }, 3000);
+
+                console.info('Backup EMENKA POS dibuat:', fileName, 'Ukuran:', blob.size, 'byte');
+                return true;
+            } catch (err) {
+                console.error('Ekspor JSON gagal:', err);
+                alert('Ekspor JSON gagal. ' + (err && err.message ? err.message : String(err)) +
+                    '\n\nSilakan coba muat ulang halaman. Jika masih gagal, kirimkan pesan ini.');
+                return false;
+            }
         }
+        // Pastikan fungsi dapat dipanggil oleh atribut onclick pada tombol HTML.
+        window.exportDataJSON = exportDataJSON;
 
         async function importDataJSON(event) {
             const input = event && event.target;
@@ -2189,6 +2345,12 @@
                     if (parsed.advanced && typeof advSave === 'function') advSave(parsed.advanced);
                     // URL webhook dan antrean sinkronisasi tidak pernah dipulihkan dari file backup.
                     saveToLocalStorage();
+                    if (Array.isArray(incoming.productSaleTypes)) {
+                        try { saveCustomProductSaleTypes(incoming.productSaleTypes); }
+                        catch (typeRestoreError) {
+                            console.warn('Daftar jenis penjualan kustom tidak dapat dipulihkan:', typeRestoreError);
+                        }
+                    }
                 } catch (saveError) {
                     state.products = previous.products; state.sales = previous.sales; state.opnameLogs = previous.opnameLogs;
                     state.dailySeq = previous.dailySeq; window.expenseLogs = previous.expenses; window.paymentLogs = previous.payments;
@@ -2316,7 +2478,7 @@
           advSave(a);advRenderClaims();renderAdvReportSummary();
           advLog('Pembaruan klaim',`${row.name}: ${row.claimStatus} - ${row.note||''}`);
         }
-        function advRenderClaims(){const el=document.getElementById('adv-claims-list');if(!el)return;const rows=(advData().stockLogs||[]).filter(x=>x.unit===state.activeUnit&&Number(x.claimValue||0)>0);el.innerHTML=rows.length?rows.slice(0,30).map(x=>`<div class="border rounded-lg p-2"><div class="font-semibold">${escapeHTML(x.name)} - ${escapeHTML(x.reason)}</div><div>${Number(x.qty||0)} unit 鈥� klaim ${formatRp(x.claimValue)}</div><div>Status: <b>${escapeHTML(x.claimStatus||'Perlu ditagih/diganti')}</b></div><div class="flex flex-wrap gap-1 mt-2"><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Sudah diajukan')">Sudah diajukan</button><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Sudah diganti')">Catat barang pengganti diterima</button><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Ditolak')">Ditolak</button></div></div>`).join(''):'Belum ada klaim.'}
+        function advRenderClaims(){const el=document.getElementById('adv-claims-list');if(!el)return;const rows=(advData().stockLogs||[]).filter(x=>x.unit===state.activeUnit&&Number(x.claimValue||0)>0);el.innerHTML=rows.length?rows.slice(0,30).map(x=>`<div class="border rounded-lg p-2"><div class="font-semibold">${escapeHTML(x.name)} - ${escapeHTML(x.reason)}</div><div>${Number(x.qty||0)} unit 閳ワ拷 klaim ${formatRp(x.claimValue)}</div><div>Status: <b>${escapeHTML(x.claimStatus||'Perlu ditagih/diganti')}</b></div><div class="flex flex-wrap gap-1 mt-2"><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Sudah diajukan')">Sudah diajukan</button><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Sudah diganti')">Catat barang pengganti diterima</button><button class="border rounded px-2 py-1" onclick="advUpdateClaimStatus('${x.id}','Ditolak')">Ditolak</button></div></div>`).join(''):'Belum ada klaim.'}
         function advRecordExpense(){const name=document.getElementById('adv-exp-name').value.trim(),amount=Number(document.getElementById('adv-exp-amount').value),source=document.getElementById('adv-exp-source').value;if(!name||!Number.isFinite(amount)||amount<=0)return alert('Isi nama dan nominal biaya.');const a=advData();a.operatingExpenses=a.operatingExpenses||[];a.operatingExpenses.unshift({date:new Date().toISOString(),name,amount,source,unit:state.activeUnit});advLedger(a,{type:'biaya_operasional',direction:source==='Tunai'?'out':'noncash',amount,note:name,source,ref:'OPS-'+Date.now()});advSave(a);document.getElementById('adv-exp-result').textContent=`Biaya ${name} sebesar ${formatRp(amount)} tersimpan sebagai biaya operasional${source==='Tunai'?' dan kas keluar':` (${source}; tidak mengurangi kas tunai)`}.`;advLog('Biaya operasional',`${name}: ${formatRp(amount)} (${source})`)}
         function advRenderLogs(){const a=advData();const sum=document.getElementById('adv-summary'),logs=document.getElementById('adv-logs');if(!sum||!logs)return;const today=new Date().toDateString(),cashSales=state.sales.filter(x=>new Date(x.timestamp||x.date).toDateString()===today&&x.paymentMethod==='TUNAI').reduce((n,x)=>n+Number(x.grandTotal||0),0),cashAdds=(a.cash||[]).filter(x=>new Date(x.date).toDateString()===today&&['modal','titipan','tambahan'].includes(x.type)).reduce((n,x)=>n+Number(x.amount||0),0),cashOut=(a.cash||[]).filter(x=>new Date(x.date).toDateString()===today&&x.type==='keluar').reduce((n,x)=>n+Number(x.amount||0),0),opsOut=(a.operatingExpenses||[]).filter(x=>new Date(x.date).toDateString()===today&&x.source==='Tunai').reduce((n,x)=>n+Number(x.amount||0),0),consPaid=(a.consignment||[]).filter(x=>x.paid&&new Date(x.date).toDateString()===today).reduce((n,x)=>n+Number(x.due||0),0);const oilBuyToday=(a.oilPurchases||[]).filter(x=>new Date(x.date).toDateString()===today&&x.unit===state.activeUnit).reduce((n,x)=>n+Number(x.totalCost||0),0),oilBuyCash=(a.oilPurchases||[]).filter(x=>new Date(x.date).toDateString()===today&&x.unit===state.activeUnit&&x.source==='Tunai').reduce((n,x)=>n+Number(x.totalCost||0),0),oilBuyDebt=(a.oilPurchases||[]).filter(x=>new Date(x.date).toDateString()===today&&x.unit===state.activeUnit&&x.source==='Utang pemasok').reduce((n,x)=>n+Number(x.totalCost||0),0);sum.innerHTML=`<b>Ringkasan modul:</b> penjualan minyak ${(a.oilSales||[]).length}, pembelian oli ${(a.oilPurchases||[]).length}, catatan kas ${(a.cash||[]).length}, konsinyasi ${(a.consignment||[]).length}, penyesuaian stok ${(a.stockLogs||[]).length}, biaya operasional ${(a.operatingExpenses||[]).length}.<hr class='my-2'><b>Pembelian oli hari ini</b><br>Total pembelian: ${formatRp(oilBuyToday)}<br>Termasuk dibayar tunai: ${formatRp(oilBuyCash)}<br>Dicatat sebagai utang pemasok: ${formatRp(oilBuyDebt)}<hr class='my-2'><b>Rekap kas hari ini (indikatif)</b><br>Penjualan tunai: ${formatRp(cashSales)}<br>Modal/tambahan/titipan pemilik: ${formatRp(cashAdds)}<br>Pengeluaran kas tercatat: ${formatRp(cashOut)}<br>Biaya operasional tunai: ${formatRp(opsOut)}<br>Pembayaran penitip yang tercatat: ${formatRp(consPaid)}<br><b>Catatan:</b> buku kas lanjutan mencatat modal, pembelian oli tunai, biaya tunai, dan pembayaran penitip; laporan keuangan utama masih perlu validasi silang.`;logs.innerHTML=(a.logs||[]).slice(0,40).map(x=>`<div class="border-b pb-2"><b>${escapeHTML(x.type)}</b> - ${escapeHTML(x.date)}<br>${escapeHTML(x.detail)}</div>`).join('')||'<p class="text-slate-400">Belum ada catatan lanjutan.</p>'}
         function advExportBackup(){const payload={format:'emenka-advanced-backup-v1',createdAt:new Date().toISOString(),pos:{products:state.products,sales:state.sales,opnameLogs:state.opnameLogs,expenses:window.expenseLogs||[],payments:window.paymentLogs||[],sheetsUrl:state.sheetsUrl,dailySeq:state.dailySeq},advanced:advData()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Emenka_Backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url)}
@@ -2342,7 +2504,7 @@
           a.stockLogs.unshift(entry); if(reason==='Barang rusak'){a.damagedStock=a.damagedStock||[];a.damagedStock.unshift({...entry,status:'Dipisahkan dari stok aktif'});} if(reason==='Voucher kedaluwarsa'){a.expiredVouchers=a.expiredVouchers||[];a.expiredVouchers.unshift({...entry,status:claimStatus});}
           advSave(a);saveToLocalStorage();renderInventoryTable();renderPosProducts();advInit();document.getElementById('adv-stock-result').textContent=`Tercatat: ${reason}. Stok ${before} -> ${after}. Nilai modal terkait Rp${entry.lossValue.toLocaleString('id-ID')}; nilai klaim Rp${claimValue.toLocaleString('id-ID')} (${claimStatus}). ${note}`;advLog('Penyesuaian stok',`${p.name}: ${reason}, ${before} -> ${after}; nilai modal ${formatRp(entry.lossValue)}; klaim ${formatRp(claimValue)} (${claimStatus}); ${note}`);renderAdvReportSummary();advRenderClaims();
         }
-        function renderAdvReportSummary(){const el=document.getElementById('adv-report-summary');if(!el)return;const a=advData(),rows=(a.stockLogs||[]).filter(x=>x.unit===state.activeUnit&&['Barang rusak','Voucher kedaluwarsa'].includes(x.reason));const damaged=rows.filter(x=>x.reason==='Barang rusak'),expired=rows.filter(x=>x.reason==='Voucher kedaluwarsa');const sum=arr=>arr.reduce((n,x)=>n+Number(x.lossValue||0),0),claims=rows.reduce((n,x)=>n+Number(x.claimValue||0),0);el.innerHTML=`<b>Rekap operasional lanjutan - ${escapeHTML(state.activeUnit||'unit aktif')}</b><div class="grid sm:grid-cols-3 gap-3"><div class="rounded-lg bg-rose-50 p-3">Barang rusak/cacat<br><strong>${damaged.length} catatan</strong><br>Nilai modal: ${formatRp(sum(damaged))}</div><div class="rounded-lg bg-amber-50 p-3">Voucher kedaluwarsa<br><strong>${expired.length} catatan</strong><br>Nilai modal: ${formatRp(sum(expired))}</div><div class="rounded-lg bg-blue-50 p-3">Klaim pemasok<br><strong>${formatRp(claims)}</strong><br>Nilai yang dicatat</div></div><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left border-b"><th class="p-2">Tanggal</th><th class="p-2">Produk</th><th class="p-2">Alasan</th><th class="p-2">Jumlah</th><th class="p-2">Nilai modal</th><th class="p-2">Klaim</th><th class="p-2">Status</th><th class="p-2">Catatan</th></tr></thead><tbody>${rows.map(x=>`<tr class="border-b"><td class="p-2">${escapeHTML(new Date(x.date).toLocaleString('id-ID'))}</td><td class="p-2">${escapeHTML(x.name||'')}</td><td class="p-2">${escapeHTML(x.reason)}</td><td class="p-2">${x.qty}</td><td class="p-2">${formatRp(x.lossValue||0)}</td><td class="p-2">${formatRp(x.claimValue||0)}</td><td class="p-2">${escapeHTML(x.claimStatus||'-')}</td><td class="p-2">${escapeHTML(x.note||'-')}</td></tr>`).join('')||'<tr><td colspan="8" class="p-3 text-slate-500">Belum ada catatan barang rusak atau voucher kedaluwarsa.</td></tr>'}</tbody></table></div><p class="text-xs text-slate-500">Nilai modal dihitung dari HPP produk saat pencatatan 鑴� jumlah. Nilai ini dikurangkan dari estimasi laba di ringkasan laporan utama. Klaim pemasok tidak mengurangi kerugian sampai penggantian/pengembalian benar-benar diterima. Estimasi laba ini masih sebelum biaya operasional.</p>`;}
+        function renderAdvReportSummary(){const el=document.getElementById('adv-report-summary');if(!el)return;const a=advData(),rows=(a.stockLogs||[]).filter(x=>x.unit===state.activeUnit&&['Barang rusak','Voucher kedaluwarsa'].includes(x.reason));const damaged=rows.filter(x=>x.reason==='Barang rusak'),expired=rows.filter(x=>x.reason==='Voucher kedaluwarsa');const sum=arr=>arr.reduce((n,x)=>n+Number(x.lossValue||0),0),claims=rows.reduce((n,x)=>n+Number(x.claimValue||0),0);el.innerHTML=`<b>Rekap operasional lanjutan - ${escapeHTML(state.activeUnit||'unit aktif')}</b><div class="grid sm:grid-cols-3 gap-3"><div class="rounded-lg bg-rose-50 p-3">Barang rusak/cacat<br><strong>${damaged.length} catatan</strong><br>Nilai modal: ${formatRp(sum(damaged))}</div><div class="rounded-lg bg-amber-50 p-3">Voucher kedaluwarsa<br><strong>${expired.length} catatan</strong><br>Nilai modal: ${formatRp(sum(expired))}</div><div class="rounded-lg bg-blue-50 p-3">Klaim pemasok<br><strong>${formatRp(claims)}</strong><br>Nilai yang dicatat</div></div><div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-left border-b"><th class="p-2">Tanggal</th><th class="p-2">Produk</th><th class="p-2">Alasan</th><th class="p-2">Jumlah</th><th class="p-2">Nilai modal</th><th class="p-2">Klaim</th><th class="p-2">Status</th><th class="p-2">Catatan</th></tr></thead><tbody>${rows.map(x=>`<tr class="border-b"><td class="p-2">${escapeHTML(new Date(x.date).toLocaleString('id-ID'))}</td><td class="p-2">${escapeHTML(x.name||'')}</td><td class="p-2">${escapeHTML(x.reason)}</td><td class="p-2">${x.qty}</td><td class="p-2">${formatRp(x.lossValue||0)}</td><td class="p-2">${formatRp(x.claimValue||0)}</td><td class="p-2">${escapeHTML(x.claimStatus||'-')}</td><td class="p-2">${escapeHTML(x.note||'-')}</td></tr>`).join('')||'<tr><td colspan="8" class="p-3 text-slate-500">Belum ada catatan barang rusak atau voucher kedaluwarsa.</td></tr>'}</tbody></table></div><p class="text-xs text-slate-500">Nilai modal dihitung dari HPP produk saat pencatatan 閼达拷 jumlah. Nilai ini dikurangkan dari estimasi laba di ringkasan laporan utama. Klaim pemasok tidak mengurangi kerugian sampai penggantian/pengembalian benar-benar diterima. Estimasi laba ini masih sebelum biaya operasional.</p>`;}
         const _renderReportsBeforeAdv=renderReports;
         renderReports=function(){_renderReportsBeforeAdv();renderAdvReportSummary();};
         const _advRenderLogsBeforeSummary=advRenderLogs;
@@ -2418,3 +2580,91 @@
           }catch(err){console.error(err);alert('Impor gagal: '+(err&&err.message?err.message:String(err)));}finally{event.target.value='';}
         }
     </script>
+
+
+<script>
+/* EMENKA POS - jalur ekspor mandiri, terpisah dari inisialisasi aplikasi utama */
+(function () {
+    function emenkaExportBackupStandalone() {
+        var button = document.getElementById('btn-export-json');
+        var originalText = button ? button.innerText : '';
+        try {
+            if (typeof state === 'undefined' || !state) {
+                throw new Error('Data aplikasi belum siap. Muat ulang halaman, login kembali, lalu coba ekspor.');
+            }
+
+            function arr(v) { return Array.isArray(v) ? v : []; }
+            var attendance = [];
+            var advanced = {};
+            var saleTypes = [];
+
+            try { if (typeof getAttendanceLogs === 'function') attendance = arr(getAttendanceLogs()); } catch (e) { console.warn(e); }
+            try { if (typeof advData === 'function') advanced = advData() || {}; } catch (e) { console.warn(e); }
+            try { if (typeof getCustomProductSaleTypesForBackup === 'function') saleTypes = arr(getCustomProductSaleTypesForBackup()); } catch (e) { console.warn(e); }
+
+            var backup = {
+                app: 'EMENKA POS',
+                backupVersion: 2,
+                exportedAt: new Date().toISOString(),
+                backupScope: 'POS + Operasional Lanjutan',
+                activeUnit: state.activeUnit || '',
+                activeCashier: state.activeCashier || '',
+                state: {
+                    products: arr(state.products),
+                    sales: arr(state.sales),
+                    opnameLogs: arr(state.opnameLogs),
+                    dailySeq: state.dailySeq,
+                    productSaleTypes: saleTypes
+                },
+                expenses: arr(window.expenseLogs),
+                payments: arr(window.paymentLogs),
+                attendance: attendance,
+                advanced: advanced
+            };
+
+            var json = JSON.stringify(backup, null, 2);
+            if (!json || json.length < 10) throw new Error('Data backup kosong atau gagal disusun.');
+
+            var blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+            var filename = 'POS_Emenka_Backup_' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+
+            if (window.navigator && typeof window.navigator.msSaveOrOpenBlob === 'function') {
+                window.navigator.msSaveOrOpenBlob(blob, filename);
+            } else {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.position = 'fixed';
+                a.style.left = '-10000px';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    try { URL.revokeObjectURL(url); } catch (e) {}
+                    try { a.parentNode && a.parentNode.removeChild(a); } catch (e) {}
+                }, 5000);
+            }
+
+            console.info('EMENKA POS: ekspor dipicu', filename, blob.size);
+            if (button) {
+                button.innerText = 'Ekspor dimulai 鉁�';
+                setTimeout(function () { button.innerText = originalText || 'Export Data JSON'; }, 2500);
+            }
+            return true;
+        } catch (err) {
+            console.error('EMENKA POS export error:', err);
+            alert('Ekspor JSON tidak berhasil: ' + (err && err.message ? err.message : String(err)));
+            return false;
+        }
+    }
+
+    window.exportDataJSON = emenkaExportBackupStandalone;
+    window.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btn-export-json');
+        if (btn) btn.onclick = function () { window.exportDataJSON(); };
+    });
+})();
+</script>
+
+</body>
+</html>
